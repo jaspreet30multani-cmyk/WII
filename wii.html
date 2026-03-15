@@ -1,0 +1,2330 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Wii Trouble - Ultimate Edition</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        /* =========================================
+           GLOBAL & UI STYLES
+           ========================================= */
+        body { 
+            margin: 0; 
+            background: #111; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            color: white; 
+            font-family: 'Segoe UI', sans-serif; 
+            user-select: none; 
+            overflow: hidden; 
+        }
+        
+        .overlay { 
+            position: absolute; 
+            top: 0; 
+            left: 0; 
+            width: 100vw; 
+            height: 100vh; 
+            background: rgba(0,0,0,0.85); 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: center; 
+            align-items: center; 
+            z-index: 10; 
+        }
+        
+        h1 { 
+            font-size: 64px; 
+            margin-bottom: 10px; 
+            text-shadow: 0 0 20px rgba(255,255,255,0.5); 
+            text-align: center; 
+        }
+        
+        h2 { 
+            margin-bottom: 10px; 
+            color: #aaa; 
+            font-size: 20px; 
+            text-align: center; 
+            border-bottom: 2px solid #444; 
+            padding-bottom: 5px; 
+        }
+        
+        .btn { 
+            background: #333; 
+            color: white; 
+            border: 4px solid #555; 
+            padding: 15px 40px; 
+            font-size: 24px; 
+            margin: 10px; 
+            cursor: pointer; 
+            border-radius: 8px; 
+            transition: 0.2s; 
+            font-weight: bold; 
+            width: 320px; 
+        }
+        
+        .btn:hover { background: #555; transform: scale(1.05); border-color: #fff; }
+        .btn:disabled { background: #222 !important; color: #555 !important; border-color: #333 !important; cursor: not-allowed; transform: none !important; }
+        
+        .btn-passive { border-color: #44aa44; } 
+        .btn-passive:hover { background: #225522; }
+        
+        .btn-active { border-color: #dd8822; } 
+        .btn-active:hover { background: #664411; }
+        
+        .btn-aggro { border-color: #dd3333; } 
+        .btn-aggro:hover { background: #661111; }
+        
+        .btn-settings { border-color: #777; background: #222; } 
+        .btn-settings:hover:not(:disabled) { background: #444; border-color: #fff; }
+        
+        .btn-small { font-size: 16px; padding: 8px 20px; width: 140px; margin-top: 15px; }
+        .btn-micro { font-size: 13px; padding: 6px 10px; width: 100%; margin-top: 8px; border-width: 2px; }
+
+        /* Inputs - Removed colored outlines */
+        .name-input-box { 
+            font-size: 24px; 
+            padding: 10px; 
+            text-align: center; 
+            font-family: inherit; 
+            width: 280px; 
+            margin-bottom: 20px; 
+            border-radius: 8px; 
+            border: 2px solid #555; 
+            background: #111; 
+            color: white; 
+            font-weight: bold; 
+            transition: border-color 0.2s; 
+        }
+        .name-input-box:focus { outline: none; border-color: #fff; }
+        
+        .join-input { 
+            font-size: 24px; 
+            padding: 10px; 
+            text-align: center; 
+            font-family: monospace; 
+            text-transform: uppercase; 
+            width: 280px; 
+            margin-bottom: 15px; 
+            border-radius: 8px; 
+            border: 2px solid #555; 
+            background: #111; 
+            color: white; 
+        }
+
+        /* Lobby & Lists */
+        .lobby-box { background: #1a1a1a; padding: 20px 40px; border-radius: 12px; border: 3px solid #444; text-align: center; margin-bottom: 20px; width: 400px; }
+        .room-id { font-family: monospace; font-size: 32px; color: #0088ff; background: #000; padding: 10px; border-radius: 8px; letter-spacing: 2px; margin: 10px 0; cursor: pointer; user-select: all; transition: background 0.2s; }
+        .room-id:hover { background: #113355; }
+        
+        .player-list { list-style: none; padding: 0; margin: 15px 0; text-align: left; }
+        .player-list li { font-size: 20px; padding: 8px; border-bottom: 1px solid #333; color: #ccc; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+        .color-dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid white; display: inline-block; }
+
+        /* Settings Menus */
+        .settings-container { display: flex; gap: 30px; background: #222; padding: 25px; border-radius: 12px; border: 4px solid #555; max-height: 95vh; overflow-y: auto; max-width: 98vw; flex-wrap: wrap; justify-content: center; }
+        .settings-col { display: flex; flex-direction: column; gap: 12px; width: 280px; }
+        label { font-size: 16px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
+        
+        input[type="text"]:not(.name-input-box):not(.join-input) { width: 100px; padding: 4px; background: #111; color: #fff; border: 2px solid #555; text-align: center; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.2s; font-family: inherit; font-size: 13px; }
+        input[type="range"] { width: 120px; cursor: pointer; }
+        input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; accent-color: #dd3333; margin: 0; }
+        
+        .btn-row { display: flex; gap: 15px; margin-top: 10px; justify-content: center; }
+
+        /* Player Control Cards */
+        .player-card { display: flex; flex-direction: column; gap: 8px; width: 230px; box-sizing: border-box; background: #1a1a1a; padding: 15px 20px; border-radius: 12px; border: 2px solid #333; box-shadow: inset 0 0 10px rgba(0,0,0,0.5), 0 4px 8px rgba(0,0,0,0.3); }
+        .player-card h2 { margin-top: 0; margin-bottom: 5px; font-size: 22px; border-bottom: 2px solid #333; padding-bottom: 6px; text-shadow: 1px 1px 2px black; }
+        .player-card label { font-size: 15px; color: #ccc; }
+        .player-card input[type="text"] { width: 110px; padding: 6px; font-size: 14px; background: #111; border: 2px solid #555; }
+        .player-card .rot-label { border-top: 2px solid #333; padding-top: 12px; margin-top: 4px; color: white; font-weight: bold; }
+
+        /* Keyboard Mapper */
+        .keyboard-wrapper { width: 100%; display: flex; flex-direction: column; align-items: center; margin-top: 15px; }
+        #keyboardRenderArea, #mpKeyboardRenderArea { display: flex; justify-content: center; align-items: flex-start; gap: 20px; background: #1a1a1a; padding: 15px; border-radius: 12px; border: 3px solid #444; box-shadow: inset 0 0 20px rgba(0,0,0,0.8); transform: scale(0.85); transform-origin: top center; margin-bottom: -35px; }
+        .keyboard-section { display: flex; flex-direction: column; gap: 0; }
+        .keyboard-row { display: flex; justify-content: flex-start; gap: 4px; margin-bottom: 4px; }
+        
+        .key-box { background: #333; border: 2px solid #555; border-radius: 4px; font-size: 13px; font-weight: bold; width: 38px; height: 38px; display: flex; justify-content: center; align-items: center; flex-direction: column; text-align: center; line-height: 1.1; color: white; cursor: pointer; position: relative; box-sizing: border-box; }
+        .key-box:hover, .key-box.key-hover { transform: scale(1.1); box-shadow: 0 0 15px rgba(255,255,255,0.5); z-index: 5; border-color: #0088ff; }
+        .k-backspace { width: 84px; } .k-tab { width: 60px; } .k-caps { width: 72px; font-size: 11px; } .k-shift-l { width: 50px; } .k-shift-r { width: 114px; } .k-ctrl { width: 50px; } .k-mod { width: 44px; } .k-space { width: 282px; }
+        .k-enter-top { width: 62px; height: 42px; margin-bottom: -4px; border-bottom-color: transparent; border-radius: 4px 4px 0 0; z-index: 2; align-items: flex-start; padding-top: 8px; }
+        .k-enter-bot { width: 50px; height: 38px; border-top-color: transparent; border-radius: 0 0 4px 4px; }
+        .k-enter-top:hover, .k-enter-top.key-hover, .k-enter-bot:hover, .k-enter-bot.key-hover { transform: none !important; border-color: #0088ff; background: #444; box-shadow: 0 0 15px rgba(0,136,255,0.5); z-index: 5; }
+        .numpad-grid { display: grid; grid-template-columns: repeat(4, 38px); grid-template-rows: repeat(5, 38px); gap: 4px; }
+        .numpad-grid .key-box { width: 100%; height: 100%; margin: 0; } 
+        .k-num-plus { grid-column: 4; grid-row: 2 / span 2; } 
+        .k-num-enter { grid-column: 4; grid-row: 4 / span 2; } 
+        .k-num-zero { grid-column: 1 / span 2; justify-content: flex-start; padding-left: 12px; } 
+        .key-empty { visibility: hidden; pointer-events: none; border: none; }
+
+        /* Game Containers */
+        #gameContainer, #mpGameContainer { display: none; z-index: 1; }
+        .map-fullscreen { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; overflow: hidden; background: #111; }
+        .map-fullscreen canvas { width: 100%; height: 100%; object-fit: fill; border: none; border-radius: 0; box-shadow: none; margin: 0; display: block; }
+        
+        .map-fixed { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #111; }
+        .map-fixed canvas { background: #eaeaea; border: 8px solid #444; border-radius: 8px; box-shadow: 0 0 30px rgba(0,0,0,0.8); width: 1200px; height: 800px; max-width: 95vw; max-height: 80vh; object-fit: contain; }
+        
+        .ui, .mp-ui { position: absolute; top: 20px; width: 100%; max-width: 1200px; display: flex; justify-content: space-around; align-items: center; font-weight: bold; font-size: 24px; z-index: 5; pointer-events: none; text-shadow: 2px 2px 6px rgba(0,0,0,0.8); }
+        
+        /* Toast Notification */
+        #toast { position: absolute; top: 40px; background: #00cc44; color: white; padding: 12px 30px; border-radius: 8px; font-weight: bold; font-size: 20px; z-index: 1000; opacity: 0; display: none; transition: opacity 0.3s; pointer-events: none; border: 2px solid white; box-shadow: 0 4px 15px rgba(0,0,0,0.6); }
+    </style>
+</head>
+<body>
+
+    <div id="toast"></div>
+
+    <div id="customAlertModal" class="overlay" style="display: none; z-index: 400;">
+        <div class="lobby-box" id="customAlertBox" style="border-color: #0088ff;">
+            <h2 id="customAlertTitle" style="color: #0088ff; font-size: 32px; margin-top: 0;">TITLE</h2>
+            <p id="customAlertMessage" style="font-size: 18px; color: #ccc;">Message</p>
+            <div class="btn-row" style="margin-top: 20px;">
+                <button class="btn btn-active btn-small" id="customAlertBtn" onclick="closeCustomAlert()">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="customConfirmModal" class="overlay" style="display: none; z-index: 400;">
+        <div class="lobby-box" style="border-color: #ffaa00;">
+            <h2 id="customConfirmTitle" style="color: #ffaa00; font-size: 32px; margin-top: 0;">TITLE</h2>
+            <p id="customConfirmMessage" style="font-size: 18px; color: #ccc;">Message</p>
+            <div class="btn-row" style="margin-top: 20px;">
+                <button class="btn btn-active btn-small" id="customConfirmYesBtn">Yes</button>
+                <button class="btn btn-aggro btn-small" onclick="closeCustomConfirm()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="disconnectModal" class="overlay" style="display: none; z-index: 300;">
+        <div class="lobby-box" style="border-color: #ff3333;">
+            <h2 style="color: #ff3333; font-size: 32px; margin-top: 0;">DISCONNECTED</h2>
+            <p style="font-size: 18px; color: #ccc;">The connection to the Host was lost.</p>
+            <div class="btn-row" style="margin-top: 20px;">
+                <button class="btn btn-active btn-small" onclick="mpAttemptReconnect()">Reconnect</button>
+                <button class="btn btn-aggro btn-small" onclick="mpDisconnect(true)">Main Menu</button>
+            </div>
+        </div>
+    </div>
+
+
+    <div id="rootMenu" class="overlay">
+        <h1>WII TROUBLE</h1>
+        <button class="btn btn-active" onclick="navToLocal()">Play Local</button>
+        <button class="btn btn-passive" onclick="navToOnline()">Play Online</button>
+    </div>
+
+
+    <div id="mainMenu" class="overlay" style="display: none;">
+        <h1>LOCAL PLAY</h1>
+        <button class="btn" onclick="showMenu('diffMenu')">1 Player vs Bot</button>
+        <button class="btn" onclick="startGame('2')">2 Players Local</button>
+        <button class="btn" onclick="startGame('3')">3 Players Local</button>
+        <button class="btn" onclick="startGame('4')">4 Players Local</button>
+        <button class="btn btn-settings" onclick="showSettingsMenu('main')">⚙️ Local Settings</button>
+        <button class="btn btn-back btn-small" onclick="showMenu('rootMenu')">← Back</button>
+    </div>
+
+    <div id="diffMenu" class="overlay" style="display: none;">
+        <h1>SELECT DIFFICULTY</h1>
+        <button class="btn btn-passive" onclick="startGame('bot-passive')">Passive (Target Practice)</button>
+        <button class="btn btn-active" onclick="startGame('bot-active')">Active (Normal)</button>
+        <button class="btn btn-aggro" onclick="startGame('bot-aggressive')">Aggressive (Hard)</button>
+        <button class="btn btn-back btn-small" onclick="showMenu('mainMenu')">← Back</button>
+    </div>
+
+    <div id="settingsMenu" class="overlay" style="display: none; z-index: 120;">
+        <h1>LOCAL SETTINGS</h1>
+        <div class="settings-container">
+            <div class="settings-col">
+                <h2>Game Physics</h2>
+                <label>Tank Speed: <span id="tsVal">2.5</span><input type="range" id="optTankSpeed" min="1" max="5" value="2.5" step="0.5" oninput="document.getElementById('tsVal').innerText=this.value"></label>
+                <label>Rotation Speed: <span id="rsVal">0.035</span><input type="range" id="optRotSpeed" min="0.01" max="0.10" value="0.035" step="0.005" oninput="document.getElementById('rsVal').innerText=this.value"></label>
+                <label>Bullet Speed: <span id="bsVal">4.5</span><input type="range" id="optBulletSpeed" min="2" max="10" value="4.5" step="0.5" oninput="document.getElementById('bsVal').innerText=this.value"></label>
+                <label>Bullet Bounces: <span id="bbVal">5</span><input type="range" id="optBulletBounces" min="1" max="20" value="5" step="1" oninput="document.getElementById('bbVal').innerText=this.value"></label>
+                <label>Infinite Bullets: <input type="checkbox" id="optBulletInfinite" onchange="document.getElementById('optBulletBounces').disabled = this.checked"></label>
+            </div>
+            <div class="settings-col">
+                <h2>Player Colors</h2>
+                <label>P1 Color: <button id="c1" class="btn-color" onclick="cycleColor(0)">Blue</button></label>
+                <label>P2/Bot Color: <button id="c2" class="btn-color" onclick="cycleColor(1)">Red</button></label>
+                <label>P3 Color: <button id="c3" class="btn-color" onclick="cycleColor(2)">Green</button></label>
+                <label>P4 Color: <button id="c4" class="btn-color" onclick="cycleColor(3)">Yellow</button></label>
+                <label style="border-top: 1px solid #444; padding-top: 10px; margin-top: 5px; color: #0088ff;">Fullscreen Map: <input type="checkbox" id="optFullscreenMap" checked></label>
+            </div>
+            <div class="settings-col">
+                <h2>Match Rules</h2>
+                <label>Wins to Match: 
+                    <div style="display:flex; align-items:center; gap:10px;" id="winsControlGroup">
+                        <button class="btn btn-settings" style="width:32px; height:32px; padding:0; margin:0;" onclick="adjWins(-1)">-</button>
+                        <span id="winsVal" style="width: 20px; text-align: center;">5</span>
+                        <button class="btn btn-settings" style="width:32px; height:32px; padding:0; margin:0;" onclick="adjWins(1)">+</button>
+                    </div>
+                </label>
+                <label>Endless Mode: <input type="checkbox" id="optEndless" onchange="document.getElementById('winsControlGroup').style.opacity = this.checked ? '0.3' : '1'; document.getElementById('winsControlGroup').style.pointerEvents = this.checked ? 'none' : 'auto';"></label>
+                
+                <h2 style="margin-top: 15px;">Controls</h2>
+                <button class="btn btn-settings" style="width: 100%; font-size: 16px; padding: 10px; margin: 0;" onclick="showControlsMenu()">🎮 Customize</button>
+            </div>
+        </div>
+        <div class="btn-row">
+            <button class="btn btn-passive btn-small" style="width: 160px;" onclick="resetDefaults()">Reset Defaults</button>
+            <button class="btn btn-back btn-small" onclick="saveSettings()">Save & Back</button>
+        </div>
+    </div>
+
+    <div id="controlsMenu" class="overlay" style="display: none; z-index: 160;">
+        <h1 style="margin-top: 0; margin-bottom: 10px; font-size: 48px; padding-top: 10px;">LOCAL CONTROLS</h1>
+        <div class="settings-container" style="max-width: 1200px; padding: 25px; overflow-x: hidden; background: #222;">
+            <div style="display: flex; flex-direction: row; gap: 20px; justify-content: center; width: 100%; flex-wrap: wrap;">
+                <div class="player-card">
+                    <h2 style="color: #0088ff;">P1 Controls</h2>
+                    <label>Up: <input type="text" id="p1u" value="KeyW" readonly class="keybind"></label>
+                    <label>Down: <input type="text" id="p1d" value="KeyS" readonly class="keybind"></label>
+                    <label>Left: <input type="text" id="p1l" value="KeyA" readonly class="keybind"></label>
+                    <label>Right: <input type="text" id="p1r" value="KeyD" readonly class="keybind"></label>
+                    <label>Shoot: <input type="text" id="p1s" value="KeyQ" readonly class="keybind"></label>
+                    <label class="rot-label">Rotation: <input type="checkbox" id="p1rot" checked></label>
+                    <button class="btn btn-passive btn-micro" onclick="resetPlayer(1)">Set to Default</button>
+                </div>
+                <div class="player-card">
+                    <h2 style="color: #ff3333;">P2 Controls</h2>
+                    <label>Up: <input type="text" id="p2u" value="ArrowUp" readonly class="keybind"></label>
+                    <label>Down: <input type="text" id="p2d" value="ArrowDown" readonly class="keybind"></label>
+                    <label>Left: <input type="text" id="p2l" value="ArrowLeft" readonly class="keybind"></label>
+                    <label>Right: <input type="text" id="p2r" value="ArrowRight" readonly class="keybind"></label>
+                    <label>Shoot: <input type="text" id="p2s" value="Enter" readonly class="keybind"></label>
+                    <label class="rot-label">Rotation: <input type="checkbox" id="p2rot" checked></label>
+                    <button class="btn btn-passive btn-micro" onclick="resetPlayer(2)">Set to Default</button>
+                </div>
+                <div class="player-card">
+                    <h2 style="color: #00cc44;">P3 Controls</h2>
+                    <label>Up: <input type="text" id="p3u" value="KeyI" readonly class="keybind"></label>
+                    <label>Down: <input type="text" id="p3d" value="KeyK" readonly class="keybind"></label>
+                    <label>Left: <input type="text" id="p3l" value="KeyJ" readonly class="keybind"></label>
+                    <label>Right: <input type="text" id="p3r" value="KeyL" readonly class="keybind"></label>
+                    <label>Shoot: <input type="text" id="p3s" value="KeyU" readonly class="keybind"></label>
+                    <label class="rot-label">Rotation: <input type="checkbox" id="p3rot" checked></label>
+                    <button class="btn btn-passive btn-micro" onclick="resetPlayer(3)">Set to Default</button>
+                </div>
+                <div class="player-card">
+                    <h2 style="color: #ffcc00;">P4 Controls</h2>
+                    <label>Up: <input type="text" id="p4u" value="Numpad8" readonly class="keybind"></label>
+                    <label>Down: <input type="text" id="p4d" value="Numpad5" readonly class="keybind"></label>
+                    <label>Left: <input type="text" id="p4l" value="Numpad4" readonly class="keybind"></label>
+                    <label>Right: <input type="text" id="p4r" value="Numpad6" readonly class="keybind"></label>
+                    <label>Shoot: <input type="text" id="p4s" value="Numpad0" readonly class="keybind"></label>
+                    <label class="rot-label">Rotation: <input type="checkbox" id="p4rot" checked></label>
+                    <button class="btn btn-passive btn-micro" onclick="resetPlayer(4)">Set to Default</button>
+                </div>
+            </div>
+            <div class="keyboard-wrapper">
+                <div id="bindInstruction" style="color: #0088ff; font-weight: bold; min-height: 24px; margin-bottom: 5px; font-size: 18px;">Click an input box above to start binding...</div>
+                <div id="keyboardRenderArea"></div>
+            </div>
+        </div>
+        <div class="btn-row" style="margin-top: 15px;">
+            <button class="btn btn-passive btn-small" onclick="resetAllControls()">Reset All</button>
+            <button class="btn btn-back btn-small" onclick="backToSettings()">Done</button>
+        </div>
+    </div>
+
+    <div id="pauseMenu" class="overlay" style="display: none; z-index: 200;">
+        <h1>PAUSED</h1>
+        <div id="pauseScoreBoard" style="display: flex; gap: 30px; margin-bottom: 25px; font-size: 32px; font-weight: bold; background: rgba(0,0,0,0.6); padding: 15px 30px; border-radius: 12px; border: 2px solid #555;"></div>
+        <button class="btn" onclick="togglePause()">Resume</button>
+        <button class="btn btn-settings" onclick="showSettingsMenu('pause')">⚙️ Settings</button>
+        <button class="btn btn-aggro" onclick="quitToMenu()">Quit to Menu</button>
+    </div>
+
+    <div id="gameContainer">
+        <div class="ui" id="scoreBoard"></div>
+        <canvas id="game"></canvas>
+    </div>
+
+
+    <div id="multiplayerMenu" class="overlay" style="display: none;">
+        <h1>ONLINE MULTIPLAYER</h1>
+        
+        <div style="color: #aaa; font-weight: bold; margin-bottom: 5px;">Enter Your Display Name:</div>
+        <input type="text" id="playerNameInput" class="name-input-box" value="Player" onchange="mpUpdateMyName('playerNameInput')">
+        <br>
+        <button class="btn btn-active" onclick="mpHostRoom()">Create Room (Host)</button>
+        <button class="btn btn-passive" onclick="showMenu('joinMenu')">Join Room</button>
+        <button class="btn btn-back btn-small" onclick="showMenu('rootMenu')">← Back</button>
+    </div>
+
+    <div id="joinMenu" class="overlay" style="display: none;">
+        <h1>JOIN ROOM</h1>
+        <input type="text" id="joinInput" class="join-input" placeholder="Enter Room ID" autocomplete="off" spellcheck="false">
+        <button class="btn btn-passive" onclick="mpJoinRoom()">Connect</button>
+        <div id="joinStatus" style="color:#ff3333; margin-top:10px; font-weight:bold; min-height: 20px;"></div>
+        <button class="btn btn-back btn-small" onclick="showMenu('multiplayerMenu')">← Back</button>
+    </div>
+
+    <div id="lobbyMenu" class="overlay" style="display: none;">
+        <h1>GAME LOBBY</h1>
+        
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px;">
+            <div style="color: #aaa; font-weight: bold;">Display Name:</div>
+            <input type="text" id="lobbyPlayerNameInput" class="name-input-box" style="width: 200px; font-size: 18px; padding: 6px; margin: 0;" onchange="mpUpdateMyName('lobbyPlayerNameInput')">
+        </div>
+
+        <div class="lobby-box">
+            <h2 id="lobbyRoleText">CONNECTING...</h2>
+            <div style="font-size:14px; color:#aaa;">ROOM ID (Share this):</div>
+            <div class="room-id" id="lobbyRoomId" onclick="navigator.clipboard.writeText(this.innerText); showToast('Room ID Copied!');">---</div>
+            <ul class="player-list" id="lobbyPlayerList"></ul>
+        </div>
+        
+        <div class="btn-row" style="margin-bottom: 20px;">
+            <button class="btn btn-settings" style="width: 180px;" onclick="mpRequestColorChange()" id="lobbyColorBtn">🎨 Color: Blue</button>
+            <button class="btn btn-settings" style="width: 180px;" onclick="mpShowControlsMenu('lobby')" id="lobbyMyControlsBtn">🎮 My Controls</button>
+            <button class="btn btn-settings" style="width: 180px; display:none;" onclick="mpShowSettingsMenu('lobby')" id="lobbySettingsBtn">⚙️ Match Rules</button>
+            <button class="btn btn-settings" style="width: 180px; display:none; border-color:#ffcc00;" onclick="mpOpenAdminPanel()" id="lobbyAdminBtn">👑 Admin Panel</button>
+        </div>
+        
+        <button class="btn btn-active" id="lobbyStartBtn" style="display:none;" onclick="mpStartGame()" disabled>Start Game</button>
+        <button class="btn btn-aggro btn-small" onclick="mpDisconnect(true)">Disconnect</button>
+    </div>
+
+    <div id="adminMenu" class="overlay" style="display: none; z-index: 150;">
+        <h1 style="color: #ffcc00;">👑 ADMIN PANEL</h1>
+        <div class="settings-container" id="adminPlayersList"></div>
+        <button class="btn btn-back btn-small" onclick="showMenu('lobbyMenu')">← Back to Lobby</button>
+    </div>
+
+    <div id="mpSettingsMenu" class="overlay" style="display: none; z-index: 120;">
+        <h1 id="mpSettingsTitle">MATCH SETTINGS</h1>
+        <div class="settings-container">
+            <div class="settings-col" id="mpColPhysics">
+                <h2>Game Physics</h2>
+                <label>Tank Speed: <span id="mpTsVal">2.5</span><input type="range" id="mpOptTankSpeed" min="1" max="5" value="2.5" step="0.5" oninput="document.getElementById('mpTsVal').innerText=this.value; mpSyncSettings();"></label>
+                <label>Rotation Speed: <span id="mpRsVal">0.035</span><input type="range" id="mpOptRotSpeed" min="0.01" max="0.10" value="0.035" step="0.005" oninput="document.getElementById('mpRsVal').innerText=this.value; mpSyncSettings();"></label>
+                <label>Bullet Speed: <span id="mpBsVal">4.5</span><input type="range" id="mpOptBulletSpeed" min="2" max="10" value="4.5" step="0.5" oninput="document.getElementById('mpBsVal').innerText=this.value; mpSyncSettings();"></label>
+                <label>Bullet Bounces: <span id="mpBbVal">5</span><input type="range" id="mpOptBulletBounces" min="1" max="20" value="5" step="1" oninput="document.getElementById('mpBbVal').innerText=this.value; mpSyncSettings();"></label>
+                <label>Infinite Bullets: <input type="checkbox" id="mpOptBulletInfinite" onchange="document.getElementById('mpOptBulletBounces').disabled = this.checked; mpSyncSettings();"></label>
+            </div>
+            
+            <div class="settings-col">
+                <h2>Display View</h2>
+                <label>Fullscreen CSS: <input type="checkbox" id="mpOptFullscreenMap" checked></label>
+            </div>
+
+            <div class="settings-col" id="mpColMatchRules">
+                <h2>Match Settings</h2>
+                <label>Wins to Match: 
+                    <div style="display:flex; align-items:center; gap:10px;" id="mpWinsControlGroup">
+                        <button class="btn btn-settings" style="width:32px; height:32px; padding:0; margin:0;" onclick="mpAdjWins(-1)">-</button>
+                        <span id="mpWinsVal" style="width: 20px; text-align: center;">5</span>
+                        <button class="btn btn-settings" style="width:32px; height:32px; padding:0; margin:0;" onclick="mpAdjWins(1)">+</button>
+                    </div>
+                </label>
+                <label>Endless Mode: <input type="checkbox" id="mpOptEndless" onchange="document.getElementById('mpWinsControlGroup').style.opacity = this.checked ? '0.3' : '1'; document.getElementById('mpWinsControlGroup').style.pointerEvents = this.checked ? 'none' : 'auto'; mpSyncSettings();"></label>
+                
+                <div id="mpHostSettingsToggle" style="display:none; margin-top:15px; background:#331111; padding:10px; border-radius:8px; border: 1px solid #ff3333;">
+                    <label style="color:#ff8888; font-size:14px;">Allow Clients to Edit Tank Physics: <input type="checkbox" id="mpOptAllowClientSettings" onchange="mpSyncSettings()"></label>
+                </div>
+            </div>
+        </div>
+        <div class="btn-row">
+            <button class="btn btn-back btn-small" onclick="mpBackToSettings()">Done</button>
+        </div>
+    </div>
+
+    <div id="mpControlsMenu" class="overlay" style="display: none; z-index: 160;">
+        <h1 style="margin-top: 0; margin-bottom: 10px; font-size: 48px; padding-top: 10px;" id="mpControlsMenuTitle">MY CONTROLS</h1>
+        <div class="settings-container" style="max-width: 1200px; padding: 25px; overflow-x: hidden; background: #222;">
+            <div style="display: flex; flex-direction: row; gap: 20px; justify-content: center; width: 100%; flex-wrap: wrap;">
+                <div class="player-card" id="mpCardP1">
+                    <h2 style="color: #0088ff;">Keyboard Bindings</h2>
+                    <label>Up: <input type="text" id="mpP1u" value="KeyW" readonly class="keybind-mp"></label>
+                    <label>Down: <input type="text" id="mpP1d" value="KeyS" readonly class="keybind-mp"></label>
+                    <label>Left: <input type="text" id="mpP1l" value="KeyA" readonly class="keybind-mp"></label>
+                    <label>Right: <input type="text" id="mpP1r" value="KeyD" readonly class="keybind-mp"></label>
+                    <label>Shoot: <input type="text" id="mpP1s" value="KeyQ" readonly class="keybind-mp"></label>
+                    <label class="rot-label">Use Tank Rotation: <input type="checkbox" id="mpP1rot" checked></label>
+                </div>
+            </div>
+            <div class="keyboard-wrapper">
+                <div id="mpBindInstruction" style="color: #0088ff; font-weight: bold; min-height: 24px; margin-bottom: 5px; font-size: 18px;">Click an input box above to start binding...</div>
+                <div id="mpKeyboardRenderArea"></div>
+            </div>
+        </div>
+        <div class="btn-row" style="margin-top: 15px;">
+            <button class="btn btn-back btn-small" onclick="mpBackToSettings()">Done</button>
+        </div>
+    </div>
+
+    <div id="mpPauseMenu" class="overlay" style="display: none; z-index: 200;">
+        <h1>MATCH PAUSED</h1>
+        <div id="mpPauseScoreBoard" style="display: flex; gap: 30px; margin-bottom: 25px; font-size: 32px; font-weight: bold; background: rgba(0,0,0,0.6); padding: 15px 30px; border-radius: 12px; border: 2px solid #555;"></div>
+        
+        <button class="btn" onclick="mpTogglePause()">▶ Resume Game</button>
+        <button class="btn btn-settings" onclick="mpShowSettingsMenu('pause')">⚙️ Match Settings</button>
+        <button class="btn btn-aggro" id="btnForceLobby" style="display:none; border-color:#ffaa00;" onclick="mpForceReturnToLobby()">Return Everyone to Lobby</button>
+        <button class="btn btn-aggro" onclick="mpDisconnect(true)">Leave Match (Disconnect)</button>
+    </div>
+
+    <div id="mpGameContainer">
+        <div class="mp-ui" id="mpScoreBoard"></div>
+        <canvas id="mpGame"></canvas>
+    </div>
+
+
+<script>
+// =======================================================================
+// SHARED UTILITIES, MODALS, & KEYBOARD LISTENERS
+// =======================================================================
+const colorPalette = [ 
+    { hex: '#0088ff', name: 'Blue' }, 
+    { hex: '#ff3333', name: 'Red' }, 
+    { hex: '#00cc44', name: 'Green' }, 
+    { hex: '#ffcc00', name: 'Yellow' }, 
+    { hex: '#ff8800', name: 'Orange' }, 
+    { hex: '#00ffff', name: 'Cyan' }, 
+    { hex: '#ff00ff', name: 'Magenta' }, 
+    { hex: '#ff88cc', name: 'Pink' }, 
+    { hex: '#ffffff', name: 'White' } 
+];
+
+let isOnlineMode = false;
+const keys = {};
+let activeBindInput = null;
+let mpActiveBindInput = null;
+
+// Unified key listener routes commands to either Local or Online logic
+window.onkeydown = (e) => {
+    if (activeBindInput || mpActiveBindInput) return;
+    keys[e.code] = true;
+    if (e.code === 'Escape') {
+        if (isOnlineMode) {
+            if (document.getElementById('mpControlsMenu').style.display === 'flex') mpBackToSettings();
+            else if (document.getElementById('mpSettingsMenu').style.display === 'flex') mpSaveSettings();
+            else if (mpIsPlaying) mpTogglePause();
+        } else {
+            if (document.getElementById('controlsMenu').style.display === 'flex') backToSettings();
+            else if (document.getElementById('settingsMenu').style.display === 'flex') saveSettings();
+            else if (isPlaying) togglePause();
+        }
+    }
+};
+window.onkeyup = (e) => { keys[e.code] = false; };
+
+// Modal & Toast Systems
+let customAlertCallback = null;
+function showCustomAlert(title, msg, btnText, callback = null, color = '#0088ff') {
+    document.getElementById('customAlertTitle').innerText = title; 
+    document.getElementById('customAlertTitle').style.color = color; 
+    document.getElementById('customAlertBox').style.borderColor = color; 
+    document.getElementById('customAlertMessage').innerText = msg; 
+    document.getElementById('customAlertBtn').innerText = btnText || "OK"; 
+    customAlertCallback = callback; 
+    document.getElementById('customAlertModal').style.display = 'flex';
+}
+function closeCustomAlert() { 
+    document.getElementById('customAlertModal').style.display = 'none'; 
+    if (customAlertCallback) customAlertCallback(); 
+}
+function showCustomConfirm(title, msg, yesText, noText, callback) { 
+    document.getElementById('customConfirmTitle').innerText = title; 
+    document.getElementById('customConfirmMessage').innerText = msg; 
+    document.getElementById('customConfirmYesBtn').innerText = yesText || "Yes"; 
+    document.getElementById('customConfirmYesBtn').onclick = () => { 
+        document.getElementById('customConfirmModal').style.display = 'none'; 
+        if(callback) callback(); 
+    }; 
+    document.getElementById('customConfirmModal').style.display = 'flex'; 
+}
+function closeCustomConfirm() { 
+    document.getElementById('customConfirmModal').style.display = 'none'; 
+}
+function showToast(msg, duration = 3000) { 
+    const toast = document.getElementById('toast'); 
+    toast.innerText = msg; 
+    toast.style.display = 'block'; 
+    setTimeout(() => toast.style.opacity = 1, 10); 
+    setTimeout(() => { 
+        toast.style.opacity = 0; 
+        setTimeout(() => toast.style.display = 'none', 300); 
+    }, duration); 
+}
+
+// Navigation
+function hideAllMenus() { 
+    document.querySelectorAll('.overlay').forEach(el => el.style.display = 'none'); 
+}
+function showMenu(menuId) { 
+    hideAllMenus(); 
+    document.getElementById(menuId).style.display = 'flex'; 
+}
+function navToLocal() { 
+    isOnlineMode = false; 
+    showMenu('mainMenu'); 
+}
+function navToOnline() { 
+    isOnlineMode = true; 
+    showMenu('multiplayerMenu'); 
+}
+
+
+// =======================================================================
+// LOCAL GAME ENGINE
+// =======================================================================
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+canvas.width = 1200; 
+canvas.height = 800;
+
+let players = []; 
+let isPlaying = false; 
+let isPaused = false; 
+let shake = 0; 
+let walls = []; 
+let particles = [];
+
+let confTankSpeed = 2.5; 
+let confBulletSpeed = 4.5; 
+let confBulletBounces = 5; 
+let confBulletInfinite = false;
+let confRotSpeed = 0.035; 
+let confFullscreenMap = true; 
+let confMaxWins = 5; 
+let confEndless = false;
+
+let settingsSource = 'root'; 
+let playerColorIndexes = [0, 1, 2, 3]; 
+
+const defaultControls = { 
+    1: { u: 'KeyW', d: 'KeyS', l: 'KeyA', r: 'KeyD', s: 'KeyQ', rot: true }, 
+    2: { u: 'ArrowUp', d: 'ArrowDown', l: 'ArrowLeft', r: 'ArrowRight', s: 'Enter', rot: true }, 
+    3: { u: 'KeyI', d: 'KeyK', l: 'KeyJ', r: 'KeyL', s: 'KeyU', rot: true }, 
+    4: { u: 'Numpad8', d: 'Numpad5', l: 'Numpad4', r: 'Numpad6', s: 'Numpad0', rot: true } 
+};
+
+function updateColorUI(pIndex) { 
+    const btn = document.getElementById(`c${pIndex + 1}`); 
+    const color = colorPalette[playerColorIndexes[pIndex]]; 
+    btn.style.backgroundColor = color.hex; 
+    btn.innerText = color.name; 
+    btn.style.color = (color.name === 'White' || color.name === 'Yellow' || color.name === 'Cyan') ? 'black' : 'white'; 
+    btn.style.textShadow = (color.name === 'White' || color.name === 'Yellow' || color.name === 'Cyan') ? 'none' : '1px 1px 2px black'; 
+    if(document.getElementById('controlsMenu').style.display === 'flex') generateKeyboardMap(); 
+}
+function cycleColor(pIndex) { 
+    playerColorIndexes[pIndex] = (playerColorIndexes[pIndex] + 1) % colorPalette.length; 
+    updateColorUI(pIndex); 
+}
+for (let i = 0; i < 4; i++) updateColorUI(i);
+
+function showDifficultyMenu() { showMenu('diffMenu'); }
+function showSettingsMenu(source) { settingsSource = source; showMenu('settingsMenu'); }
+function showControlsMenu() { showMenu('controlsMenu'); generateKeyboardMap(); }
+
+function backToSettings() { 
+    if (activeBindInput) { 
+        activeBindInput.value = activeBindInput.dataset.oldValue; 
+        activeBindInput.style.borderColor = '#555'; 
+        activeBindInput.style.backgroundColor = '#111'; 
+        window.removeEventListener('keydown', window.currentKeyHandler); 
+        activeBindInput = null; 
+        document.getElementById('bindInstruction').innerText = 'Click an input box above to start binding...'; 
+    } 
+    if (settingsSource === 'pause') { showMenu('pauseMenu'); } 
+    else if (settingsSource === 'main') { showMenu('mainMenu'); } 
+    else { showMenu('settingsMenu'); } 
+}
+
+function saveSettings() {
+    confTankSpeed = parseFloat(document.getElementById('optTankSpeed').value); 
+    confRotSpeed = parseFloat(document.getElementById('optRotSpeed').value); 
+    confBulletSpeed = parseFloat(document.getElementById('optBulletSpeed').value); 
+    confBulletBounces = parseInt(document.getElementById('optBulletBounces').value); 
+    confBulletInfinite = document.getElementById('optBulletInfinite').checked; 
+    confFullscreenMap = document.getElementById('optFullscreenMap').checked; 
+    confEndless = document.getElementById('optEndless').checked;
+    
+    let gc = document.getElementById('gameContainer'); 
+    if(gc) gc.className = confFullscreenMap ? 'map-fullscreen' : 'map-fixed';
+    
+    if (isPlaying && players.length > 0) { 
+        players[0].color = colorPalette[playerColorIndexes[0]].hex; 
+        players[0].controls = { up: document.getElementById('p1u').value, down: document.getElementById('p1d').value, left: document.getElementById('p1l').value, right: document.getElementById('p1r').value, shoot: document.getElementById('p1s').value }; 
+        players[0].useRotation = document.getElementById('p1rot').checked; 
+        
+        if (players.length >= 2 && !players[1].botMode) { 
+            players[1].color = colorPalette[playerColorIndexes[1]].hex; 
+            players[1].controls = { up: document.getElementById('p2u').value, down: document.getElementById('p2d').value, left: document.getElementById('p2l').value, right: document.getElementById('p2r').value, shoot: document.getElementById('p2s').value }; 
+            players[1].useRotation = document.getElementById('p2rot').checked; 
+        } 
+        if (players.length >= 3 && !players[2].botMode) { 
+            players[2].color = colorPalette[playerColorIndexes[2]].hex; 
+            players[2].controls = { up: document.getElementById('p3u').value, down: document.getElementById('p3d').value, left: document.getElementById('p3l').value, right: document.getElementById('p3r').value, shoot: document.getElementById('p3s').value }; 
+            players[2].useRotation = document.getElementById('p3rot').checked; 
+        } 
+        if (players.length >= 4 && !players[3].botMode) { 
+            players[3].color = colorPalette[playerColorIndexes[3]].hex; 
+            players[3].controls = { up: document.getElementById('p4u').value, down: document.getElementById('p4d').value, left: document.getElementById('p4l').value, right: document.getElementById('p4r').value, shoot: document.getElementById('p4s').value }; 
+            players[3].useRotation = document.getElementById('p4rot').checked; 
+        } 
+        updateScoreBoard(); 
+    }
+    
+    if (settingsSource === 'pause') { showMenu('pauseMenu'); } 
+    else { showMenu('mainMenu'); }
+}
+
+function adjWins(delta) { 
+    confMaxWins += delta; 
+    if (confMaxWins < 1) confMaxWins = 1; 
+    if (confMaxWins > 20) confMaxWins = 20; 
+    document.getElementById('winsVal').innerText = confMaxWins; 
+}
+
+function resetPlayer(p) { 
+    document.getElementById(`p${p}u`).value = defaultControls[p].u; 
+    document.getElementById(`p${p}d`).value = defaultControls[p].d; 
+    document.getElementById(`p${p}l`).value = defaultControls[p].l; 
+    document.getElementById(`p${p}r`).value = defaultControls[p].r; 
+    document.getElementById(`p${p}s`).value = defaultControls[p].s; 
+    document.getElementById(`p${p}rot`).checked = defaultControls[p].rot; 
+    generateKeyboardMap(); 
+}
+
+function resetAllControls() { 
+    for (let i = 1; i <= 4; i++) resetPlayer(i); 
+}
+
+function resetDefaults() { 
+    document.getElementById('optTankSpeed').value = 2.5; 
+    document.getElementById('tsVal').innerText = "2.5"; 
+    document.getElementById('optRotSpeed').value = 0.035; 
+    document.getElementById('rsVal').innerText = "0.035"; 
+    document.getElementById('optBulletSpeed').value = 4.5; 
+    document.getElementById('bsVal').innerText = "4.5"; 
+    document.getElementById('optBulletBounces').value = 5; 
+    document.getElementById('bbVal').innerText = "5"; 
+    document.getElementById('optBulletBounces').disabled = false; 
+    document.getElementById('optBulletInfinite').checked = false; 
+    document.getElementById('optFullscreenMap').checked = true; 
+    
+    confRotSpeed = 0.035; 
+    confFullscreenMap = true; 
+    confMaxWins = 5; 
+    document.getElementById('winsVal').innerText = "5"; 
+    
+    document.getElementById('optEndless').checked = false; 
+    document.getElementById('winsControlGroup').style.opacity = '1'; 
+    document.getElementById('winsControlGroup').style.pointerEvents = 'auto'; 
+    
+    playerColorIndexes = [0, 1, 2, 3]; 
+    for (let i = 0; i < 4; i++) updateColorUI(i); 
+    
+    resetAllControls(); 
+}
+
+function togglePause() { 
+    isPaused = !isPaused; 
+    if(isPaused) { 
+        showMenu('pauseMenu'); 
+        let html = ''; 
+        players.forEach(p => { html += `<div style="color:${p.color}">${p.name}: ${p.score}</div>`; }); 
+        document.getElementById('pauseScoreBoard').innerHTML = html; 
+    } else { 
+        hideAllMenus(); 
+        document.getElementById('gameContainer').style.display = confFullscreenMap ? 'block' : 'flex'; 
+    } 
+}
+
+function quitToMenu() { 
+    isPaused = false; 
+    isPlaying = false; 
+    showMenu('mainMenu'); 
+}
+
+document.querySelectorAll('.keybind').forEach(input => { 
+    input.addEventListener('click', function() { 
+        if (activeBindInput) { 
+            activeBindInput.value = activeBindInput.dataset.oldValue; 
+            activeBindInput.style.borderColor = '#555'; 
+            activeBindInput.style.backgroundColor = '#111'; 
+            window.removeEventListener('keydown', window.currentKeyHandler); 
+        } 
+        activeBindInput = this; 
+        this.dataset.oldValue = this.value; 
+        this.value = 'Press...'; 
+        this.style.borderColor = '#0088ff'; 
+        this.style.backgroundColor = '#002244'; 
+        document.getElementById('bindInstruction').innerText = `Assigning key for ${this.parentElement.parentElement.querySelector('h2').innerText} ${this.parentElement.innerText.split(':')[0]}...`; 
+        
+        const keyHandler = (e) => { 
+            e.preventDefault(); 
+            finalizeBind(e.code); 
+        }; 
+        window.currentKeyHandler = keyHandler; 
+        window.addEventListener('keydown', keyHandler); 
+    }); 
+});
+
+function finalizeBind(code) { 
+    if (!activeBindInput) return; 
+    activeBindInput.value = code; 
+    activeBindInput.style.borderColor = '#555'; 
+    activeBindInput.style.backgroundColor = '#111'; 
+    window.removeEventListener('keydown', window.currentKeyHandler); 
+    activeBindInput = null; 
+    document.getElementById('bindInstruction').innerText = 'Click an input box above to start binding...'; 
+    generateKeyboardMap(); 
+}
+
+function generateMap() { 
+    walls = []; 
+    const cols = 10; 
+    const rows = 7; 
+    const cellW = canvas.width / cols; 
+    const cellH = canvas.height / rows; 
+    const t = 12; 
+    
+    walls.push({x: 0, y: 0, w: canvas.width, h: t}); 
+    walls.push({x: 0, y: canvas.height - t, w: canvas.width, h: t}); 
+    walls.push({x: 0, y: 0, w: t, h: canvas.height}); 
+    walls.push({x: canvas.width - t, y: 0, w: t, h: canvas.height}); 
+    
+    let vWalls = Array.from({length: cols - 1}, () => Array(rows).fill(true)); 
+    let hWalls = Array.from({length: cols}, () => Array(rows - 1).fill(true)); 
+    let visited = Array.from({length: cols}, () => Array(rows).fill(false)); 
+    let stack = [[0, 0]]; 
+    visited[0][0] = true; 
+    
+    while (stack.length > 0) { 
+        let current = stack.pop(); 
+        let cx = current[0]; 
+        let cy = current[1]; 
+        let neighbors = []; 
+        
+        if (cy > 0 && !visited[cx][cy - 1]) neighbors.push({x: cx, y: cy - 1, dir: 'up'}); 
+        if (cy < rows - 1 && !visited[cx][cy + 1]) neighbors.push({x: cx, y: cy + 1, dir: 'down'}); 
+        if (cx > 0 && !visited[cx - 1][cy]) neighbors.push({x: cx - 1, y: cy, dir: 'left'}); 
+        if (cx < cols - 1 && !visited[cx + 1][cy]) neighbors.push({x: cx + 1, y: cy, dir: 'right'}); 
+        
+        if (neighbors.length > 0) { 
+            stack.push(current); 
+            let next = neighbors[Math.floor(Math.random() * neighbors.length)]; 
+            if (next.dir === 'up') hWalls[cx][cy - 1] = false; 
+            else if (next.dir === 'down') hWalls[cx][cy] = false; 
+            else if (next.dir === 'left') vWalls[cx - 1][cy] = false; 
+            else if (next.dir === 'right') vWalls[cx][cy] = false; 
+            
+            visited[next.x][next.y] = true; 
+            stack.push([next.x, next.y]); 
+        } 
+    } 
+    
+    for (let x = 0; x < cols - 1; x++) for (let y = 0; y < rows; y++) if (vWalls[x][y] && Math.random() < 0.3) vWalls[x][y] = false; 
+    for (let x = 0; x < cols; x++) for (let y = 0; y < rows - 1; y++) if (hWalls[x][y] && Math.random() < 0.3) hWalls[x][y] = false; 
+    
+    for (let x = 1; x < cols - 1; x++) { 
+        for (let y = 1; y < rows - 1; y++) { 
+            if (vWalls[x-1][y-1] && vWalls[x-1][y] && hWalls[x-1][y-1] && hWalls[x][y-1]) { 
+                let r = Math.random(); 
+                if (r < 0.25) vWalls[x-1][y-1] = false; 
+                else if (r < 0.5) vWalls[x-1][y] = false; 
+                else if (r < 0.75) hWalls[x-1][y-1] = false; 
+                else hWalls[x][y-1] = false; 
+            } 
+        } 
+    } 
+    
+    for (let x = 0; x < cols - 1; x++) { 
+        for (let y = 0; y < rows; y++) { 
+            if (vWalls[x][y]) walls.push({x: (x + 1) * cellW - t/2, y: y * cellH - t/2, w: t, h: cellH + t}); 
+        } 
+    } 
+    
+    for (let x = 0; x < cols; x++) { 
+        for (let y = 0; y < rows - 1; y++) { 
+            if (hWalls[x][y]) walls.push({x: x * cellW - t/2, y: (y + 1) * cellH - t/2, w: cellW + t, h: t}); 
+        } 
+    } 
+}
+
+function isPointInWall(px, py) { 
+    for (let w of walls) { 
+        if (px >= w.x && px <= w.x + w.w && py >= w.y && py <= w.y + w.h) return true; 
+    } 
+    return false; 
+}
+
+function hasLineOfSight(x1, y1, x2, y2) { 
+    let steps = 30; 
+    for(let i = 0; i <= steps; i++) { 
+        let px = x1 + (x2 - x1) * (i / steps); 
+        let py = y1 + (y2 - y1) * (i / steps); 
+        if (isPointInWall(px, py)) return false; 
+    } 
+    return true; 
+}
+
+class Particle { 
+    constructor(x, y, color) { 
+        this.x = x; 
+        this.y = y; 
+        this.color = color; 
+        const angle = Math.random() * Math.PI * 2; 
+        const speed = Math.random() * 6 + 1; 
+        this.vx = Math.cos(angle) * speed; 
+        this.vy = Math.sin(angle) * speed; 
+        this.life = 1.0; 
+        this.decay = Math.random() * 0.03 + 0.02; 
+        this.size = Math.random() * 6 + 2; 
+    } 
+    update() { 
+        this.x += this.vx; 
+        this.y += this.vy; 
+        this.life -= this.decay; 
+    } 
+    draw() { 
+        ctx.globalAlpha = Math.max(0, this.life); 
+        ctx.fillStyle = this.color; 
+        ctx.fillRect(this.x, this.y, this.size, this.size); 
+        ctx.globalAlpha = 1.0; 
+    } 
+}
+
+class Tank { 
+    constructor(name, x, y, color, controls, useRotation, botMode = null) { 
+        this.name = name; 
+        this.startX = x; 
+        this.startY = y; 
+        this.x = x; 
+        this.y = y; 
+        this.color = color; 
+        this.angle = 0; 
+        this.radius = 18; 
+        this.controls = controls; 
+        this.useRotation = useRotation; 
+        this.bullets = []; 
+        this.cooldown = 0; 
+        this.speed = 0; 
+        this.score = 0; 
+        this.dead = false; 
+        this.botMode = botMode; 
+    } 
+    
+    reset() { 
+        this.x = this.startX; 
+        this.y = this.startY; 
+        this.angle = 0; 
+        this.speed = 0; 
+        this.bullets = []; 
+        this.dead = false; 
+    } 
+    
+    shoot() { 
+        if (this.cooldown <= 0) { 
+            this.bullets.push(new Bullet(this.x + Math.cos(this.angle)*25, this.y + Math.sin(this.angle)*25, this.angle)); 
+            this.cooldown = (this.botMode === 'aggressive') ? 40 : 60; 
+        } 
+    } 
+    
+    update() { 
+        if (this.dead) return; 
+        let oldX = this.x; 
+        let oldY = this.y; 
+        
+        if (this.botMode) { 
+            let target = players[0]; 
+            if (target && !target.dead) { 
+                let targetAngle = Math.atan2(target.y - this.y, target.x - this.x); 
+                let angleDiff = targetAngle - this.angle; 
+                angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff)); 
+                let turnSpeed = this.botMode === 'aggressive' ? Math.max(0.06, confRotSpeed) : (this.botMode === 'passive' ? 0.02 : confRotSpeed); 
+                let dist = 40; 
+                let frontBlocked = isPointInWall(this.x + Math.cos(this.angle)*dist, this.y + Math.sin(this.angle)*dist); 
+                let leftBlocked = isPointInWall(this.x + Math.cos(this.angle - 0.7)*dist, this.y + Math.sin(this.angle - 0.7)*dist); 
+                let rightBlocked = isPointInWall(this.x + Math.cos(this.angle + 0.7)*dist, this.y + Math.sin(this.angle + 0.7)*dist); 
+                
+                if (frontBlocked) { 
+                    this.speed = 1.0; 
+                    if (!leftBlocked) this.angle -= turnSpeed * 1.5; 
+                    else if (!rightBlocked) this.angle += turnSpeed * 1.5; 
+                    else { this.speed = -1.5; this.angle += turnSpeed; } 
+                } else { 
+                    if (angleDiff > 0.1) this.angle += turnSpeed; 
+                    else if (angleDiff < -0.1) this.angle -= turnSpeed; 
+                    
+                    let botMaxSpeed = confTankSpeed * 0.96; 
+                    this.speed = (this.botMode === 'aggressive') ? botMaxSpeed : (this.botMode === 'passive' ? botMaxSpeed * 0.5 : botMaxSpeed * 0.75); 
+                } 
+                if (this.botMode !== 'passive' && Math.abs(angleDiff) < 0.4) { 
+                    if (hasLineOfSight(this.x, this.y, target.x, target.y)) this.shoot(); 
+                } 
+            } else {
+                this.speed = 0; 
+            }
+        } else { 
+            if (!this.useRotation) { 
+                let dx = 0; 
+                let dy = 0; 
+                if (keys[this.controls.left]) dx -= 1; 
+                if (keys[this.controls.right]) dx += 1; 
+                if (keys[this.controls.up]) dy -= 1; 
+                if (keys[this.controls.down]) dy += 1; 
+                
+                if (dx !== 0 || dy !== 0) { 
+                    this.angle = Math.atan2(dy, dx); 
+                    this.speed = Math.min(this.speed + 0.6, confTankSpeed); 
+                } else { 
+                    this.speed *= 0.6; 
+                } 
+            } else { 
+                if (keys[this.controls.left]) this.angle -= confRotSpeed; 
+                if (keys[this.controls.right]) this.angle += confRotSpeed; 
+                if (keys[this.controls.up]) this.speed = Math.min(this.speed + 0.3, confTankSpeed); 
+                else if (keys[this.controls.down]) this.speed = Math.max(this.speed - 0.3, -confTankSpeed * 0.8); 
+                else this.speed *= 0.85; 
+            } 
+            if (keys[this.controls.shoot]) this.shoot(); 
+        } 
+        
+        this.x += Math.cos(this.angle) * this.speed; 
+        let hitX = false; 
+        walls.forEach(w => { 
+            if (this.x + this.radius > w.x && this.x - this.radius < w.x + w.w && this.y + this.radius > w.y && this.y - this.radius < w.y + w.h) hitX = true; 
+        }); 
+        if (hitX) this.x = oldX; 
+        
+        this.y += Math.sin(this.angle) * this.speed; 
+        let hitY = false; 
+        walls.forEach(w => { 
+            if (this.x + this.radius > w.x && this.x - this.radius < w.x + w.w && this.y + this.radius > w.y && this.y - this.radius < w.y + w.h) hitY = true; 
+        }); 
+        if (hitY) this.y = oldY; 
+        
+        if (this.cooldown > 0) this.cooldown--; 
+    } 
+    
+    draw() { 
+        if (this.dead) return; 
+        ctx.save(); 
+        ctx.translate(this.x, this.y); 
+        ctx.rotate(this.angle); 
+        ctx.fillStyle = "#222"; 
+        ctx.fillRect(-22, -22, 44, 12); 
+        ctx.fillRect(-22, 10, 44, 12); 
+        ctx.fillStyle = this.color; 
+        ctx.beginPath(); 
+        ctx.roundRect ? ctx.roundRect(-18, -16, 36, 32, 6) : ctx.fillRect(-18, -16, 36, 32); 
+        ctx.fill(); 
+        ctx.fillStyle = "#333"; 
+        ctx.fillRect(0, -4, 32, 8); 
+        ctx.fillStyle = this.color; 
+        ctx.filter = "brightness(75%)"; 
+        ctx.beginPath(); 
+        ctx.arc(0, 0, 12, 0, Math.PI * 2); 
+        ctx.fill(); 
+        ctx.filter = "none"; 
+        ctx.restore(); 
+    } 
+}
+
+class Bullet { 
+    constructor(x, y, angle) { 
+        this.x = x; 
+        this.y = y; 
+        this.vx = Math.cos(angle) * confBulletSpeed; 
+        this.vy = Math.sin(angle) * confBulletSpeed; 
+        this.bounces = 0; 
+        this.alive = true; 
+    } 
+    
+    update() { 
+        let nextX = this.x + this.vx; 
+        let nextY = this.y + this.vy; 
+        let bouncedX = false; 
+        let bouncedY = false; 
+        
+        walls.forEach(w => { 
+            if (nextX + 6 > w.x && nextX - 6 < w.x + w.w && this.y + 6 > w.y && this.y - 6 < w.y + w.h) bouncedX = true; 
+            if (this.x + 6 > w.x && this.x - 6 < w.x + w.w && nextY + 6 > w.y && nextY - 6 < w.y + w.h) bouncedY = true; 
+        }); 
+        
+        if (bouncedX) { 
+            this.vx *= -1; 
+            this.bounces++; 
+            nextX = this.x + this.vx; 
+        } 
+        if (bouncedY) { 
+            this.vy *= -1; 
+            this.bounces++; 
+            nextY = this.y + this.vy; 
+        } 
+        
+        this.x = nextX; 
+        this.y = nextY; 
+        
+        if (!confBulletInfinite && this.bounces > confBulletBounces) { 
+            this.alive = false; 
+        } 
+    } 
+    
+    draw() { 
+        ctx.fillStyle = "#111"; 
+        ctx.beginPath(); 
+        ctx.arc(this.x, this.y, 6, 0, Math.PI*2); 
+        ctx.fill(); 
+        ctx.strokeStyle = "rgba(0,0,0,0.3)"; 
+        ctx.lineWidth = 2; 
+        ctx.stroke(); 
+    } 
+}
+
+function updateScoreBoard() { 
+    let html = ''; 
+    players.forEach((p, i) => { 
+        html += `<div style="color:${p.color}">${p.name}: <span id="s${i}">${p.score}</span></div>`; 
+    }); 
+    document.getElementById('scoreBoard').innerHTML = html; 
+}
+
+function startGame(mode) { 
+    hideAllMenus(); 
+    const gc = document.getElementById('gameContainer'); 
+    gc.style.display = 'block'; 
+    gc.className = confFullscreenMap ? 'map-fullscreen' : 'map-fixed'; 
+    players = []; 
+    isPaused = false; 
+    
+    let col1 = colorPalette[playerColorIndexes[0]].hex; 
+    let col2 = colorPalette[playerColorIndexes[1]].hex; 
+    let col3 = colorPalette[playerColorIndexes[2]].hex; 
+    let col4 = colorPalette[playerColorIndexes[3]].hex; 
+    
+    const c1 = { up: document.getElementById('p1u').value, down: document.getElementById('p1d').value, left: document.getElementById('p1l').value, right: document.getElementById('p1r').value, shoot: document.getElementById('p1s').value }; 
+    const c2 = { up: document.getElementById('p2u').value, down: document.getElementById('p2d').value, left: document.getElementById('p2l').value, right: document.getElementById('p2r').value, shoot: document.getElementById('p2s').value }; 
+    const c3 = { up: document.getElementById('p3u').value, down: document.getElementById('p3d').value, left: document.getElementById('p3l').value, right: document.getElementById('p3r').value, shoot: document.getElementById('p3s').value }; 
+    const c4 = { up: document.getElementById('p4u').value, down: document.getElementById('p4d').value, left: document.getElementById('p4l').value, right: document.getElementById('p4r').value, shoot: document.getElementById('p4s').value }; 
+    
+    const rot1 = document.getElementById('p1rot').checked; 
+    const rot2 = document.getElementById('p2rot').checked; 
+    const rot3 = document.getElementById('p3rot').checked; 
+    const rot4 = document.getElementById('p4rot').checked; 
+    
+    players.push(new Tank('PLAYER 1', 60, 60, col1, c1, rot1)); 
+    
+    if (mode.startsWith('bot-')) { 
+        players.push(new Tank('BOT', 1140, 740, col2, {}, true, mode.split('-')[1])); 
+    } else { 
+        let n = parseInt(mode); 
+        if (n >= 2) players.push(new Tank('PLAYER 2', 1140, 740, col2, c2, rot2)); 
+        if (n >= 3) players.push(new Tank('PLAYER 3', 1140, 60, col3, c3, rot3)); 
+        if (n >= 4) players.push(new Tank('PLAYER 4', 60, 740, col4, c4, rot4)); 
+    } 
+    
+    updateScoreBoard(); 
+    generateMap(); 
+    isPlaying = true; 
+    requestAnimationFrame(gameLoop); 
+}
+
+function checkRoundEnd() { 
+    let alivePlayers = players.filter(p => !p.dead); 
+    if (alivePlayers.length <= 1) { 
+        isPlaying = false; 
+        if (alivePlayers.length === 1) { 
+            alivePlayers[0].score++; 
+            document.getElementById(`s${players.indexOf(alivePlayers[0])}`).innerText = alivePlayers[0].score; 
+        } 
+        
+        setTimeout(() => { 
+            let winner = players.find(p => p.score >= confMaxWins); 
+            if (winner && !confEndless) { 
+                showCustomAlert('MATCH OVER', winner.name + " WINS!", 'OK', () => { quitToMenu(); }, '#ffcc00'); 
+                return; 
+            } 
+            players.forEach(p => p.reset()); 
+            generateMap(); 
+            particles = []; 
+            isPlaying = true; 
+        }, 2000); 
+    } 
+}
+
+function gameLoop() { 
+    if (document.getElementById('gameContainer').style.display === 'none') { 
+        requestAnimationFrame(gameLoop); 
+        return; 
+    } 
+    
+    ctx.clearRect(0, 0, canvas.width, canvas.height); 
+    ctx.save(); 
+    
+    if (shake > 0 && !isPaused) { 
+        ctx.translate(Math.random() * 12 - 6, Math.random() * 12 - 6); 
+        shake--; 
+    } 
+    
+    ctx.fillStyle = "#333"; 
+    walls.forEach(w => ctx.fillRect(w.x, w.y, w.w, w.h)); 
+    
+    if (!isPaused) { 
+        particles.forEach(p => p.update()); 
+        particles = particles.filter(p => p.life > 0); 
+    } 
+    particles.forEach(p => p.draw()); 
+    
+    players.forEach(tank => { 
+        if (!isPaused) tank.update(); 
+        tank.draw(); 
+        
+        tank.bullets = tank.bullets.filter(b => b.alive); 
+        tank.bullets.forEach(b => { 
+            if (!isPaused) b.update(); 
+            b.draw(); 
+            
+            players.forEach(target => { 
+                if (!target.dead && isPlaying && !isPaused) { 
+                    if (Math.hypot(b.x - target.x, b.y - target.y) < target.radius + 4) { 
+                        target.dead = true; 
+                        shake = 15; 
+                        for(let i=0; i<30; i++) { 
+                            particles.push(new Particle(target.x, target.y, target.color)); 
+                            particles.push(new Particle(target.x, target.y, '#ffaa00')); 
+                        } 
+                        checkRoundEnd(); 
+                    } 
+                } 
+            }); 
+        }); 
+    }); 
+    
+    ctx.restore(); 
+    requestAnimationFrame(gameLoop); 
+}
+
+
+// =======================================================================
+// ONLINE MULTIPLAYER ENGINE
+// =======================================================================
+const mpCanvas = document.getElementById('mpGame');
+const mpCtx = mpCanvas.getContext('2d');
+mpCanvas.width = 1200; 
+mpCanvas.height = 800;
+
+let mpPlayers = []; 
+let mpIsPlaying = false; 
+let mpIsPaused = false; 
+let mpShake = 0; 
+let mpWalls = []; 
+let mpParticles = [];
+
+let mpConfTankSpeed = 2.5; 
+let mpConfBulletSpeed = 4.5; 
+let mpConfBulletBounces = 5; 
+let mpConfBulletInfinite = false;
+let mpConfRotSpeed = 0.035; 
+let mpConfFullscreenMap = true; 
+let mpConfMaxWins = 5; 
+let mpConfEndless = false;
+
+let mpSettingsSource = 'root'; 
+let intentionalDisconnect = false; 
+let currentRoomId = ""; 
+let adminEditingTargetId = null;
+let myControlsLocked = false; 
+let myControls = { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD', shoot: 'KeyQ', rot: true };
+
+function mpShowSettingsMenu(source) { 
+    mpSettingsSource = source; 
+    showMenu('mpSettingsMenu'); 
+    document.getElementById('mpHostSettingsToggle').style.display = isHost ? 'block' : 'none'; 
+    if(myPeer && !isHost) { 
+        let allowEdit = document.getElementById('mpOptAllowClientSettings').checked; 
+        document.getElementById('mpColMatchRules').style.display = 'none'; 
+        document.getElementById('mpColPhysics').style.display = allowEdit ? 'flex' : 'none'; 
+    } else { 
+        document.getElementById('mpColMatchRules').style.display = 'flex'; 
+        document.getElementById('mpColPhysics').style.display = 'flex'; 
+    } 
+}
+
+function mpShowControlsMenu(source) { 
+    if (myControlsLocked && !isHost) { 
+        showCustomAlert('ACCESS DENIED', "The Host has locked your controls. You cannot change them.", "OK", null, '#ff3333'); 
+        return; 
+    } 
+    mpSettingsSource = source; 
+    adminEditingTargetId = null; 
+    showMenu('mpControlsMenu'); 
+    document.getElementById('mpControlsMenuTitle').innerText = "MY CONTROLS"; 
+    
+    document.getElementById('mpP1u').value = myControls.up; 
+    document.getElementById('mpP1d').value = myControls.down; 
+    document.getElementById('mpP1l').value = myControls.left; 
+    document.getElementById('mpP1r').value = myControls.right; 
+    document.getElementById('mpP1s').value = myControls.shoot; 
+    document.getElementById('mpP1rot').checked = myControls.rot; 
+    
+    mpGenerateKeyboardMap(); 
+}
+
+function mpBackToSettings() { 
+    if (mpActiveBindInput) { 
+        mpActiveBindInput.value = mpActiveBindInput.dataset.oldValue; 
+        mpActiveBindInput.style.borderColor = '#555'; 
+        mpActiveBindInput.style.backgroundColor = '#111'; 
+        window.removeEventListener('keydown', window.currentMPKeyHandler); 
+        mpActiveBindInput = null; 
+        document.getElementById('mpBindInstruction').innerText = 'Click an input box above to start binding...'; 
+    } 
+    
+    if (document.getElementById('mpControlsMenu').style.display === 'flex') { 
+        let newControls = { 
+            up: document.getElementById('mpP1u').value, 
+            down: document.getElementById('mpP1d').value, 
+            left: document.getElementById('mpP1l').value, 
+            right: document.getElementById('mpP1r').value, 
+            shoot: document.getElementById('mpP1s').value, 
+            rot: document.getElementById('mpP1rot').checked 
+        }; 
+        
+        if (adminEditingTargetId && isHost) { 
+            let cData = { type: 'force_controls', controls: newControls }; 
+            let targetConn = conns.find(c => c.peer === adminEditingTargetId); 
+            if (targetConn) targetConn.send(cData); 
+            showMenu('adminMenu'); 
+            return; 
+        } else { 
+            myControls = newControls; 
+        } 
+    } 
+    
+    if (mpSettingsSource === 'lobby') { showMenu('lobbyMenu'); } 
+    else if (mpSettingsSource === 'pause') { showMenu('mpPauseMenu'); } 
+    else if (mpSettingsSource === 'admin') { showMenu('adminMenu'); } 
+    else { showMenu('mpSettingsMenu'); } 
+}
+
+function mpSaveSettings() { 
+    mpConfTankSpeed = parseFloat(document.getElementById('mpOptTankSpeed').value); 
+    mpConfRotSpeed = parseFloat(document.getElementById('mpOptRotSpeed').value); 
+    mpConfBulletSpeed = parseFloat(document.getElementById('mpOptBulletSpeed').value); 
+    mpConfBulletBounces = parseInt(document.getElementById('mpOptBulletBounces').value); 
+    mpConfBulletInfinite = document.getElementById('mpOptBulletInfinite').checked; 
+    mpConfFullscreenMap = document.getElementById('mpOptFullscreenMap').checked; 
+    mpConfEndless = document.getElementById('mpOptEndless').checked; 
+    
+    let gc = document.getElementById('mpGameContainer'); 
+    if(gc) gc.className = mpConfFullscreenMap ? 'map-fullscreen' : 'map-fixed'; 
+    
+    if (myPeer) mpSyncSettings(); 
+    
+    if (mpSettingsSource === 'lobby') showMenu('lobbyMenu'); 
+    else if (mpSettingsSource === 'pause') showMenu('mpPauseMenu'); 
+    else showMenu('multiplayerMenu'); 
+}
+
+function mpAdjWins(delta) { 
+    mpConfMaxWins += delta; 
+    if (mpConfMaxWins < 1) mpConfMaxWins = 1; 
+    if (mpConfMaxWins > 20) mpConfMaxWins = 20; 
+    document.getElementById('mpWinsVal').innerText = mpConfMaxWins; 
+    mpSyncSettings(); 
+}
+
+function mpTogglePause() { 
+    if (!mpIsPlaying) return; 
+    mpIsPaused = !mpIsPaused; 
+    
+    if (mpIsPaused) { 
+        showMenu('mpPauseMenu'); 
+        document.getElementById('btnForceLobby').style.display = isHost ? 'inline-block' : 'none'; 
+        let html = ''; 
+        mpPlayers.forEach(p => { html += `<div style="color:${p.color}">${p.name}: ${p.score}</div>`; }); 
+        document.getElementById('mpPauseScoreBoard').innerHTML = html; 
+    } else { 
+        hideAllMenus(); 
+        document.getElementById('mpGameContainer').style.display = mpConfFullscreenMap ? 'block' : 'flex'; 
+    } 
+}
+
+function mpForceReturnToLobby() { 
+    if (!isHost) return; 
+    conns.forEach(c => c.send({type: 'return_lobby'})); 
+    mpHandleReturnToLobby(); 
+}
+
+function mpHandleReturnToLobby() { 
+    mpIsPlaying = false; 
+    mpIsPaused = false; 
+    document.getElementById('mpGameContainer').style.display = 'none'; 
+    showMenu('lobbyMenu'); 
+    playersList.forEach(p => { p.score = 0; }); 
+    if(isHost) broadcastLobbyState(); 
+}
+
+function mpOpenAdminPanel() { 
+    if (!isHost) return; 
+    mpSettingsSource = 'admin'; 
+    showMenu('adminMenu'); 
+    
+    let container = document.getElementById('adminPlayersList'); 
+    container.innerHTML = ''; 
+    
+    playersList.forEach(p => { 
+        if (p.id === myPeer.id) return; 
+        
+        let div = document.createElement('div'); 
+        div.className = 'player-card'; 
+        div.style.width = '300px'; 
+        div.innerHTML = `
+            <h2 style="color:${colorPalette[p.colorIndex].hex}">${p.name}</h2>
+            <div class="btn-row" style="margin-top: 5px;">
+                <button class="btn btn-micro btn-passive" onclick="adminMakeHost('${p.id}')">Make Host</button>
+                <button class="btn btn-micro ${p.controlsLocked ? 'btn-aggro' : 'btn-active'}" onclick="adminToggleLock('${p.id}')">${p.controlsLocked ? 'Unlock Keys' : 'Lock Keys'}</button>
+            </div>
+            <button class="btn btn-micro btn-settings" onclick="adminEditControls('${p.id}', '${p.name}')">Edit Their Controls</button>
+        `; 
+        container.appendChild(div); 
+    }); 
+}
+
+function adminToggleLock(peerId) { 
+    let p = playersList.find(x => x.id === peerId); 
+    if(p) { 
+        p.controlsLocked = !p.controlsLocked; 
+        let c = conns.find(x => x.peer === peerId); 
+        if(c) c.send({type: 'lock_controls', locked: p.controlsLocked}); 
+        mpOpenAdminPanel(); 
+    } 
+}
+
+function adminEditControls(peerId, playerName) { 
+    adminEditingTargetId = peerId; 
+    hideAllMenus(); 
+    document.getElementById('mpControlsMenu').style.display = 'flex'; 
+    document.getElementById('mpControlsMenuTitle').innerText = "EDITING " + playerName.toUpperCase(); 
+    
+    document.getElementById('mpP1u').value = 'Press...'; 
+    document.getElementById('mpP1d').value = 'Press...'; 
+    document.getElementById('mpP1l').value = 'Press...'; 
+    document.getElementById('mpP1r').value = 'Press...'; 
+    document.getElementById('mpP1s').value = 'Press...'; 
+    
+    mpGenerateKeyboardMap(); 
+}
+
+function adminMakeHost(peerId) { 
+    showCustomConfirm("TRANSFER HOST", "Are you sure you want to give Host privileges to this player?", "Yes, Make Host", "Cancel", () => { 
+        let c = conns.find(x => x.peer === peerId); 
+        if(c) c.send({type: 'host_transfer'}); 
+        
+        setTimeout(() => { 
+            intentionalDisconnect = true; 
+            mpDisconnect(false); 
+            setTimeout(() => { joinRoomWithId(currentRoomId); }, 1500); 
+        }, 500); 
+    }); 
+}
+
+function generateRoomId() { 
+    return Math.random().toString(36).substr(2, 5).toUpperCase(); 
+}
+
+function getNextAvailableColor(currentIndex) { 
+    let used = playersList.map(p => p.colorIndex); 
+    for(let i = 1; i <= colorPalette.length; i++) { 
+        let check = (currentIndex + i) % colorPalette.length; 
+        if(!used.includes(check)) return check; 
+    } 
+    return currentIndex; 
+}
+
+function hostRoom(specificId = null) { 
+    intentionalDisconnect = false; 
+    isHost = true; 
+    showMenu('lobbyMenu'); 
+    
+    document.getElementById('lobbyRoleText').innerText = "HOST (You)"; 
+    document.getElementById('lobbyStartBtn').style.display = "inline-block"; 
+    document.getElementById('lobbySettingsBtn').style.display = "inline-block"; 
+    document.getElementById('lobbyAdminBtn').style.display = "inline-block"; 
+    
+    currentRoomId = specificId || generateRoomId(); 
+    myPeer = new Peer('wii-trouble-' + currentRoomId); 
+    
+    document.getElementById('lobbyRoomId').innerText = "CREATING ROOM..."; 
+    
+    myPeer.on('open', function(id) { 
+        document.getElementById('lobbyRoomId').innerText = currentRoomId; 
+        playersList = [{id: myPeer.id, name: myPlayerName, colorIndex: myColorIndex, controlsLocked: false}]; 
+        updateLobbyUI(); 
+    }); 
+    
+    myPeer.on('error', function(err) { 
+        if(err.type === 'unavailable-id') { 
+            setTimeout(() => { hostRoom(specificId); }, 1500); 
+        } 
+    }); 
+    
+    myPeer.on('connection', function(conn) { 
+        if(conns.length >= 3) { 
+            conn.send({type: 'error', msg: 'The room is full! Only 4 players are allowed.'}); 
+            setTimeout(()=>conn.close(), 500); 
+            return; 
+        } 
+        
+        conns.push(conn); 
+        conn.on('data', function(data) { handleNetworkData(data, conn); }); 
+        
+        conn.on('open', function() { 
+            let newColor = getNextAvailableColor(-1); 
+            playersList.push({id: conn.peer, name: `Client connecting...`, colorIndex: newColor, controlsLocked: false}); 
+            broadcastLobbyState(); 
+            mpSendSettingsTo(conn); 
+        }); 
+        
+        conn.on('close', function() { 
+            conns = conns.filter(c => c !== conn); 
+            playersList = playersList.filter(p => p.id !== conn.peer); 
+            broadcastLobbyState(); 
+        }); 
+    }); 
+}
+
+function joinRoom() { 
+    let rawId = document.getElementById('joinInput').value.trim().toUpperCase(); 
+    if(!rawId) return; 
+    joinRoomWithId(rawId); 
+}
+
+function joinRoomWithId(rawId) { 
+    intentionalDisconnect = false; 
+    currentRoomId = rawId; 
+    isHost = false; 
+    myPeer = new Peer(); 
+    
+    showMenu('lobbyMenu'); 
+    document.getElementById('lobbyRoleText').innerText = "CONNECTING..."; 
+    document.getElementById('lobbyRoomId').innerText = rawId; 
+    document.getElementById('lobbyStartBtn').style.display = "none"; 
+    document.getElementById('lobbySettingsBtn').style.display = "none"; 
+    document.getElementById('lobbyAdminBtn').style.display = "none"; 
+    
+    myPeer.on('open', function(id) { 
+        let conn = myPeer.connect('wii-trouble-' + rawId); 
+        conns = [conn]; 
+        
+        conn.on('open', function() { 
+            document.getElementById('lobbyRoleText').innerText = "CLIENT (Connected)"; 
+            conn.send({ type: 'update_name', name: myPlayerName }); 
+        }); 
+        
+        conn.on('data', function(data) { handleNetworkData(data, conn); }); 
+        
+        conn.on('close', function() { 
+            if(!intentionalDisconnect) { 
+                document.getElementById('disconnectModal').style.display = 'flex'; 
+            } 
+        }); 
+    }); 
+}
+
+function mpAttemptReconnect() { 
+    document.getElementById('disconnectModal').style.display = 'none'; 
+    
+    if (playersList.length > 1 && playersList[1].id === myPeer.id) { 
+        if(myPeer) myPeer.destroy(); 
+        setTimeout(() => { hostRoom(currentRoomId); }, 1500); 
+    } else { 
+        if(myPeer) myPeer.destroy(); 
+        setTimeout(() => { joinRoomWithId(currentRoomId); }, 3500); 
+    } 
+}
+
+function mpDisconnect(isIntentional = false) { 
+    intentionalDisconnect = isIntentional; 
+    if(myPeer) myPeer.destroy(); 
+    isHost = false; 
+    conns = []; 
+    playersList = []; 
+    mpIsPlaying = false; 
+    document.getElementById('mpGameContainer').style.display = 'none'; 
+    document.getElementById('disconnectModal').style.display = 'none'; 
+    showMenu('multiplayerMenu'); 
+}
+
+function broadcastLobbyState() { 
+    conns.forEach(c => c.send({ type: 'lobby_update', players: playersList })); 
+    updateLobbyUI(); 
+}
+
+function requestColorChange() { 
+    if(isHost) { 
+        let p = playersList.find(player => player.id === myPeer.id); 
+        if(p) p.colorIndex = getNextAvailableColor(p.colorIndex); 
+        broadcastLobbyState(); 
+    } else { 
+        if(conns.length > 0) conns[0].send({ type: 'request_next_color' }); 
+    } 
+}
+
+function updateLobbyUI() { 
+    let list = document.getElementById('lobbyPlayerList'); 
+    list.innerHTML = ''; 
+    
+    playersList.forEach((p) => { 
+        let li = document.createElement('li'); 
+        let colInfo = colorPalette[p.colorIndex]; 
+        let hostCrown = p.id === playersList[0].id ? "👑 " : ""; 
+        li.innerHTML = `<div><span class="color-dot" style="background-color: ${colInfo.hex};"></span> ${hostCrown}${p.name}</div>`; 
+        if(p.id === (myPeer ? myPeer.id : null)) li.innerHTML += " <b>(You)</b>"; 
+        list.appendChild(li); 
+    }); 
+    
+    if (isHost) {
+        document.getElementById('lobbyStartBtn').disabled = playersList.length < 2; 
+    }
+    
+    let myPlayer = playersList.find(p => p.id === (myPeer ? myPeer.id : null)); 
+    if(myPlayer) { 
+        let btn = document.getElementById('lobbyColorBtn'); 
+        let col = colorPalette[myPlayer.colorIndex]; 
+        btn.style.backgroundColor = col.hex; 
+        btn.innerText = `🎨 Color: ${col.name}`; 
+        btn.style.color = (col.name === 'White' || col.name === 'Yellow' || col.name === 'Cyan') ? 'black' : 'white'; 
+        myColorIndex = myPlayer.colorIndex; 
+        
+        if(document.getElementById('mpControlsMenu').style.display === 'flex') {
+            mpGenerateKeyboardMap(); 
+        }
+    } 
+}
+
+function mpSyncSettings() { 
+    let sData = { 
+        type: 'settings_update', 
+        isHost: isHost, 
+        tankSpeed: document.getElementById('mpOptTankSpeed').value, 
+        rotSpeed: document.getElementById('mpOptRotSpeed').value, 
+        bulletSpeed: document.getElementById('mpOptBulletSpeed').value, 
+        bulletBounces: document.getElementById('mpOptBulletBounces').value, 
+        bulletInfinite: document.getElementById('mpOptBulletInfinite').checked, 
+        wins: mpConfMaxWins, 
+        endless: document.getElementById('mpOptEndless').checked, 
+        allowEdit: document.getElementById('mpOptAllowClientSettings').checked 
+    }; 
+    conns.forEach(c => c.send(sData)); 
+}
+
+function mpSendSettingsTo(conn) { 
+    conn.send({ 
+        type: 'settings_update', 
+        isHost: isHost, 
+        tankSpeed: document.getElementById('mpOptTankSpeed').value, 
+        rotSpeed: document.getElementById('mpOptRotSpeed').value, 
+        bulletSpeed: document.getElementById('mpOptBulletSpeed').value, 
+        bulletBounces: document.getElementById('mpOptBulletBounces').value, 
+        bulletInfinite: document.getElementById('mpOptBulletInfinite').checked, 
+        wins: mpConfMaxWins, 
+        endless: document.getElementById('mpOptEndless').checked, 
+        allowEdit: document.getElementById('mpOptAllowClientSettings').checked 
+    }); 
+}
+
+function applyReceivedSettings(data) { 
+    if (isHost && !data.isHost) { 
+        if (!document.getElementById('mpOptAllowClientSettings').checked) return; 
+        
+        document.getElementById('mpOptTankSpeed').value = data.tankSpeed; 
+        document.getElementById('mpTsVal').innerText = data.tankSpeed; 
+        document.getElementById('mpOptRotSpeed').value = data.rotSpeed; 
+        document.getElementById('mpRsVal').innerText = data.rotSpeed; 
+        document.getElementById('mpOptBulletSpeed').value = data.bulletSpeed; 
+        document.getElementById('mpBsVal').innerText = data.bulletSpeed; 
+        document.getElementById('mpOptBulletBounces').value = data.bulletBounces; 
+        document.getElementById('mpBbVal').innerText = data.bulletBounces; 
+        document.getElementById('mpOptBulletInfinite').checked = data.bulletInfinite; 
+        document.getElementById('mpOptBulletBounces').disabled = data.bulletInfinite; 
+        return; 
+    } 
+    
+    document.getElementById('mpOptTankSpeed').value = data.tankSpeed; 
+    document.getElementById('mpTsVal').innerText = data.tankSpeed; 
+    document.getElementById('mpOptRotSpeed').value = data.rotSpeed; 
+    document.getElementById('mpRsVal').innerText = data.rotSpeed; 
+    document.getElementById('mpOptBulletSpeed').value = data.bulletSpeed; 
+    document.getElementById('mpBsVal').innerText = data.bulletSpeed; 
+    document.getElementById('mpOptBulletBounces').value = data.bulletBounces; 
+    document.getElementById('mpBbVal').innerText = data.bulletBounces; 
+    document.getElementById('mpOptBulletInfinite').checked = data.bulletInfinite; 
+    document.getElementById('mpOptBulletBounces').disabled = data.bulletInfinite; 
+    
+    mpConfMaxWins = data.wins; 
+    document.getElementById('mpWinsVal').innerText = data.wins; 
+    document.getElementById('mpOptEndless').checked = data.endless; 
+    document.getElementById('mpOptAllowClientSettings').checked = data.allowEdit; 
+    
+    document.getElementById('lobbySettingsBtn').style.display = data.allowEdit ? 'inline-block' : 'none'; 
+    if(!isHost && document.getElementById('mpSettingsMenu').style.display === 'flex') mpShowSettingsMenu('lobby'); 
+}
+
+function handleNetworkData(data, conn) { 
+    if(data.type === 'error') { 
+        intentionalDisconnect = true; 
+        showCustomAlert('CONNECTION FAILED', data.msg, 'Back to Menu', () => mpDisconnect(true), '#ff3333'); 
+    } 
+    else if(data.type === 'lobby_update') { 
+        playersList = data.players; 
+        updateLobbyUI(); 
+    } 
+    else if(data.type === 'settings_update') { 
+        applyReceivedSettings(data); 
+    } 
+    else if(data.type === 'update_name' && isHost) { 
+        let p = playersList.find(x => x.id === conn.peer); 
+        if(p) { 
+            p.name = data.name; 
+            broadcastLobbyState(); 
+        } 
+    } 
+    else if(data.type === 'request_next_color' && isHost) { 
+        let p = playersList.find(player => player.id === conn.peer); 
+        if(p) { 
+            p.colorIndex = getNextAvailableColor(p.colorIndex); 
+            broadcastLobbyState(); 
+        } 
+    } 
+    else if(data.type === 'lock_controls') { 
+        myControlsLocked = data.locked; 
+        if(myControlsLocked && document.getElementById('mpControlsMenu').style.display === 'flex') { 
+            mpBackToSettings(); 
+        } 
+        document.getElementById('lobbyMyControlsBtn').className = myControlsLocked ? "btn btn-settings btn-aggro" : "btn btn-settings"; 
+    } 
+    else if(data.type === 'force_controls') { 
+        myControls = data.controls; 
+    } 
+    else if(data.type === 'host_transfer') { 
+        intentionalDisconnect = true; 
+        if(myPeer) myPeer.destroy(); 
+        setTimeout(() => { hostRoom(currentRoomId); }, 1500); 
+    } 
+    else if(data.type === 'return_lobby') { 
+        mpHandleReturnToLobby(); 
+    } 
+    else if(data.type === 'start_game') { 
+        mpInitGame(data.walls); 
+    } 
+    else if(data.type === 'sync_state') { 
+        let p = mpPlayers.find(t => t.peerId === data.peerId); 
+        if (p && !p.isLocal) { 
+            p.x = data.x; 
+            p.y = data.y; 
+            p.angle = data.angle; 
+        } 
+        if (isHost) conns.forEach(c => { 
+            if(c.peer !== data.peerId && c.peer !== conn.peer) c.send(data); 
+        }); 
+    } 
+    else if(data.type === 'sync_shoot') { 
+        let p = mpPlayers.find(t => t.peerId === data.peerId); 
+        if (p && !p.isLocal) { 
+            p.shoot(true, data.x, data.y, data.angle); 
+        } 
+        if (isHost) conns.forEach(c => { 
+            if(c.peer !== data.peerId && c.peer !== conn.peer) c.send(data); 
+        }); 
+    } 
+    else if(data.type === 'sync_death') { 
+        let p = mpPlayers.find(t => t.peerId === data.peerId); 
+        if (p && !p.dead) { 
+            p.dead = true; 
+            mpShake = 15; 
+            for(let i=0; i<30; i++) { 
+                mpParticles.push(new MPParticle(p.x, p.y, p.color)); 
+                mpParticles.push(new MPParticle(p.x, p.y, '#ffaa00')); 
+            } 
+            if (isHost) mpCheckRoundEnd(); 
+        } 
+        if (isHost) conns.forEach(c => { 
+            if(c.peer !== data.peerId && c.peer !== conn.peer) c.send(data); 
+        }); 
+    } 
+    else if(data.type === 'sync_scores') { 
+        data.scores.forEach(s => { 
+            let p = mpPlayers.find(t => t.peerId === s.id); 
+            if(p) p.score = s.score; 
+        }); 
+        mpUpdateScoreBoard(); 
+    } 
+}
+
+function mpStartGame() { 
+    if(!isHost) return; 
+    
+    mpWalls = []; 
+    const cols = 10; 
+    const rows = 7; 
+    const cellW = logicalW / cols; 
+    const cellH = logicalH / rows; 
+    const t = 12; 
+    
+    mpWalls.push({x: 0, y: 0, w: logicalW, h: t}); 
+    mpWalls.push({x: 0, y: logicalH - t, w: logicalW, h: t}); 
+    mpWalls.push({x: 0, y: 0, w: t, h: logicalH}); 
+    mpWalls.push({x: logicalW - t, y: 0, w: t, h: logicalH}); 
+    
+    let vWalls = Array.from({length: cols - 1}, () => Array(rows).fill(true)); 
+    let hWalls = Array.from({length: cols}, () => Array(rows - 1).fill(true)); 
+    let visited = Array.from({length: cols}, () => Array(rows).fill(false)); 
+    let stack = [[0, 0]]; 
+    visited[0][0] = true; 
+    
+    while (stack.length > 0) { 
+        let current = stack.pop(); 
+        let cx = current[0]; 
+        let cy = current[1]; 
+        let neighbors = []; 
+        
+        if (cy > 0 && !visited[cx][cy - 1]) neighbors.push({x: cx, y: cy - 1, dir: 'up'}); 
+        if (cy < rows - 1 && !visited[cx][cy + 1]) neighbors.push({x: cx, y: cy + 1, dir: 'down'}); 
+        if (cx > 0 && !visited[cx - 1][cy]) neighbors.push({x: cx - 1, y: cy, dir: 'left'}); 
+        if (cx < cols - 1 && !visited[cx + 1][cy]) neighbors.push({x: cx + 1, y: cy, dir: 'right'}); 
+        
+        if (neighbors.length > 0) { 
+            stack.push(current); 
+            let next = neighbors[Math.floor(Math.random() * neighbors.length)]; 
+            if (next.dir === 'up') hWalls[cx][cy - 1] = false; 
+            else if (next.dir === 'down') hWalls[cx][cy] = false; 
+            else if (next.dir === 'left') vWalls[cx - 1][cy] = false; 
+            else if (next.dir === 'right') vWalls[cx][cy] = false; 
+            visited[next.x][next.y] = true; 
+            stack.push([next.x, next.y]); 
+        } 
+    } 
+    
+    for (let x = 0; x < cols - 1; x++) for (let y = 0; y < rows; y++) if (vWalls[x][y] && Math.random() < 0.3) vWalls[x][y] = false; 
+    for (let x = 0; x < cols; x++) for (let y = 0; y < rows - 1; y++) if (hWalls[x][y] && Math.random() < 0.3) hWalls[x][y] = false; 
+    
+    for (let x = 1; x < cols - 1; x++) { 
+        for (let y = 1; y < rows - 1; y++) { 
+            if (vWalls[x-1][y-1] && vWalls[x-1][y] && hWalls[x-1][y-1] && hWalls[x][y-1]) { 
+                let r = Math.random(); 
+                if (r < 0.25) vWalls[x-1][y-1] = false; 
+                else if (r < 0.5) vWalls[x-1][y] = false; 
+                else if (r < 0.75) hWalls[x-1][y-1] = false; 
+                else hWalls[x][y-1] = false; 
+            } 
+        } 
+    } 
+    
+    for (let x = 0; x < cols - 1; x++) { 
+        for (let y = 0; y < rows; y++) { 
+            if (vWalls[x][y]) mpWalls.push({x: (x + 1) * cellW - t/2, y: y * cellH - t/2, w: t, h: cellH + t}); 
+        } 
+    } 
+    
+    for (let x = 0; x < cols; x++) { 
+        for (let y = 0; y < rows - 1; y++) { 
+            if (hWalls[x][y]) mpWalls.push({x: x * cellW - t/2, y: (y + 1) * cellH - t/2, w: cellW + t, h: t}); 
+        } 
+    } 
+
+    let startData = { type: 'start_game', walls: mpWalls }; 
+    conns.forEach(c => c.send(startData)); 
+    mpInitGame(mpWalls); 
+}
+
+function mpInitGame(serverWalls) { 
+    hideAllMenus(); 
+    const gc = document.getElementById('mpGameContainer'); 
+    gc.className = mpConfFullscreenMap ? 'map-fullscreen' : 'map-fixed'; 
+    gc.style.display = mpConfFullscreenMap ? 'block' : 'flex'; 
+
+    mpWalls = serverWalls; 
+    
+    let oldScores = {}; 
+    mpPlayers.forEach(p => { oldScores[p.peerId] = p.score; }); 
+    
+    mpPlayers = []; 
+    
+    let myIndex = playersList.findIndex(p => p.id === myPeer.id); 
+    if (myIndex === -1) myIndex = 0; 
+    
+    playersList.forEach((pInfo, index) => { 
+        let px = 60; let py = 60; 
+        if(index === 1) { px = logicalW-60; py = logicalH-60; } 
+        if(index === 2) { px = logicalW-60; py = 60; } 
+        if(index === 3) { px = 60; py = logicalH-60; } 
+        
+        let isLocal = (index === myIndex); 
+        let c = isLocal ? myControls : {}; 
+        let r = isLocal ? myControls.rot : true; 
+        
+        let t = new MPTank(pInfo.name, px, py, colorPalette[pInfo.colorIndex].hex, c, r, isLocal, pInfo.id); 
+        if (oldScores[pInfo.id]) t.score = oldScores[pInfo.id]; 
+        
+        mpPlayers.push(t); 
+    }); 
+    
+    mpUpdateScoreBoard(); 
+    mpIsPlaying = true; 
+    mpIsPaused = false; 
+}
+
+class MPParticle { 
+    constructor(x, y, color) { 
+        this.x = x; 
+        this.y = y; 
+        this.color = color; 
+        const angle = Math.random() * Math.PI * 2; 
+        const speed = Math.random() * 6 + 1; 
+        this.vx = Math.cos(angle) * speed; 
+        this.vy = Math.sin(angle) * speed; 
+        this.life = 1.0; 
+        this.decay = Math.random() * 0.03 + 0.02; 
+        this.size = Math.random() * 6 + 2; 
+    } 
+    
+    update() { 
+        this.x += this.vx; 
+        this.y += this.vy; 
+        this.life -= this.decay; 
+    } 
+    
+    draw() { 
+        mpCtx.globalAlpha = Math.max(0, this.life); 
+        mpCtx.fillStyle = this.color; 
+        mpCtx.fillRect(this.x, this.y, this.size, this.size); 
+        mpCtx.globalAlpha = 1.0; 
+    } 
+}
+
+class MPTank { 
+    constructor(name, x, y, color, controls, useRotation, isLocal, peerId) { 
+        this.name = name; 
+        this.startX = x; 
+        this.startY = y; 
+        this.x = x; 
+        this.y = y; 
+        this.color = color; 
+        this.angle = 0; 
+        this.radius = 18; 
+        this.controls = controls; 
+        this.useRotation = useRotation; 
+        this.bullets = []; 
+        this.cooldown = 0; 
+        this.speed = 0; 
+        this.score = 0; 
+        this.dead = false; 
+        this.isLocal = isLocal; 
+        this.peerId = peerId; 
+    } 
+    
+    shoot(isNetwork = false, netX, netY, netAngle) { 
+        if (this.cooldown <= 0) { 
+            let bx = isNetwork ? netX : this.x; 
+            let by = isNetwork ? netY : this.y; 
+            let ba = isNetwork ? netAngle : this.angle; 
+            
+            this.bullets.push(new MPBullet(bx + Math.cos(ba)*25, by + Math.sin(ba)*25, ba)); 
+            this.cooldown = 60; 
+            
+            if (!isNetwork && this.isLocal) { 
+                let shootData = { type: 'sync_shoot', peerId: this.peerId, x: this.x, y: this.y, angle: this.angle }; 
+                if (isHost) conns.forEach(c => c.send(shootData)); 
+                else if (conns.length > 0) conns[0].send(shootData); 
+            } 
+        } 
+    } 
+    
+    update() { 
+        if (this.dead) return; 
+        
+        if (!this.isLocal) { 
+            if (this.cooldown > 0) this.cooldown--; 
+            return; 
+        } 
+        
+        let oldX = this.x; 
+        let oldY = this.y; 
+        
+        if (!this.useRotation) { 
+            let dx = 0; 
+            let dy = 0; 
+            if (keys[this.controls.left]) dx -= 1; 
+            if (keys[this.controls.right]) dx += 1; 
+            if (keys[this.controls.up]) dy -= 1; 
+            if (keys[this.controls.down]) dy += 1; 
+            
+            if (dx !== 0 || dy !== 0) { 
+                this.angle = Math.atan2(dy, dx); 
+                this.speed = Math.min(this.speed + 0.6, mpConfTankSpeed); 
+            } else { 
+                this.speed *= 0.6; 
+            } 
+        } else { 
+            if (keys[this.controls.left]) this.angle -= mpConfRotSpeed; 
+            if (keys[this.controls.right]) this.angle += mpConfRotSpeed; 
+            
+            if (keys[this.controls.up]) this.speed = Math.min(this.speed + 0.3, mpConfTankSpeed); 
+            else if (keys[this.controls.down]) this.speed = Math.max(this.speed - 0.3, -mpConfTankSpeed * 0.8); 
+            else this.speed *= 0.85; 
+        } 
+        
+        if (keys[this.controls.shoot]) this.shoot(); 
+        
+        this.x += Math.cos(this.angle) * this.speed; 
+        let hitX = false; 
+        mpWalls.forEach(w => { 
+            if (this.x + this.radius > w.x && this.x - this.radius < w.x + w.w && this.y + this.radius > w.y && this.y - this.radius < w.y + w.h) hitX = true; 
+        }); 
+        if (hitX) this.x = oldX; 
+        
+        this.y += Math.sin(this.angle) * this.speed; 
+        let hitY = false; 
+        mpWalls.forEach(w => { 
+            if (this.x + this.radius > w.x && this.x - this.radius < w.x + w.w && this.y + this.radius > w.y && this.y - this.radius < w.y + w.h) hitY = true; 
+        }); 
+        if (hitY) this.y = oldY; 
+        
+        if (this.cooldown > 0) this.cooldown--; 
+    } 
+    
+    draw() { 
+        if (this.dead) return; 
+        mpCtx.save(); 
+        mpCtx.translate(this.x, this.y); 
+        mpCtx.rotate(this.angle); 
+        
+        mpCtx.fillStyle = "#222"; 
+        mpCtx.fillRect(-22, -22, 44, 12); 
+        mpCtx.fillRect(-22, 10, 44, 12); 
+        
+        mpCtx.fillStyle = this.color; 
+        mpCtx.beginPath(); 
+        mpCtx.roundRect ? mpCtx.roundRect(-18, -16, 36, 32, 6) : mpCtx.fillRect(-18, -16, 36, 32); 
+        mpCtx.fill(); 
+        
+        mpCtx.fillStyle = "#333"; 
+        mpCtx.fillRect(0, -4, 32, 8); 
+        
+        mpCtx.fillStyle = this.color; 
+        mpCtx.filter = "brightness(75%)"; 
+        mpCtx.beginPath(); 
+        mpCtx.arc(0, 0, 12, 0, Math.PI * 2); 
+        mpCtx.fill(); 
+        mpCtx.filter = "none"; 
+        mpCtx.restore(); 
+        
+        mpCtx.fillStyle = "rgba(255,255,255,0.8)"; 
+        mpCtx.font = "bold 14px sans-serif"; 
+        mpCtx.textAlign = "center"; 
+        mpCtx.fillText(this.name, this.x, this.y - 30); 
+    } 
+}
+
+class MPBullet { 
+    constructor(x, y, angle) { 
+        this.x = x; 
+        this.y = y; 
+        this.vx = Math.cos(angle) * mpConfBulletSpeed; 
+        this.vy = Math.sin(angle) * mpConfBulletSpeed; 
+        this.bounces = 0; 
+        this.alive = true; 
+    } 
+    
+    update() { 
+        let nextX = this.x + this.vx; 
+        let nextY = this.y + this.vy; 
+        let bouncedX = false; 
+        let bouncedY = false; 
+        
+        mpWalls.forEach(w => { 
+            if (nextX + 6 > w.x && nextX - 6 < w.x + w.w && this.y + 6 > w.y && this.y - 6 < w.y + w.h) bouncedX = true; 
+            if (this.x + 6 > w.x && this.x - 6 < w.x + w.w && nextY + 6 > w.y && nextY - 6 < w.y + w.h) bouncedY = true; 
+        }); 
+        
+        if (bouncedX) { 
+            this.vx *= -1; 
+            this.bounces++; 
+            nextX = this.x + this.vx; 
+        } 
+        if (bouncedY) { 
+            this.vy *= -1; 
+            this.bounces++; 
+            nextY = this.y + this.vy; 
+        } 
+        
+        this.x = nextX; 
+        this.y = nextY; 
+        
+        if (!mpConfBulletInfinite && this.bounces > mpConfBulletBounces) { 
+            this.alive = false; 
+        } 
+    } 
+    
+    draw() { 
+        mpCtx.fillStyle = "#111"; 
+        mpCtx.beginPath(); 
+        mpCtx.arc(this.x, this.y, 6, 0, Math.PI*2); 
+        mpCtx.fill(); 
+        mpCtx.strokeStyle = "rgba(0,0,0,0.3)"; 
+        mpCtx.lineWidth = 2; 
+        mpCtx.stroke(); 
+    } 
+}
+
+function mpUpdateScoreBoard() { 
+    let html = ''; 
+    mpPlayers.forEach((p, i) => { 
+        html += `<div style="color:${p.color}">${p.name}: <span id="mpS${i}">${p.score}</span></div>`; 
+    }); 
+    document.getElementById('mpScoreBoard').innerHTML = html; 
+}
+
+function mpBroadcastScores() { 
+    if (!isHost) return; 
+    let scores = mpPlayers.map(p => ({id: p.peerId, score: p.score})); 
+    conns.forEach(c => c.send({type: 'sync_scores', scores: scores})); 
+}
+
+function mpCheckRoundEnd() { 
+    if (!isHost) return; 
+    
+    let alivePlayers = mpPlayers.filter(p => !p.dead); 
+    if (alivePlayers.length <= 1) { 
+        mpIsPlaying = false; 
+        if (alivePlayers.length === 1) { 
+            alivePlayers[0].score++; 
+            mpBroadcastScores(); 
+            mpUpdateScoreBoard(); 
+        } 
+        
+        setTimeout(() => { 
+            let winner = mpPlayers.find(p => p.score >= mpConfMaxWins); 
+            if (winner && !mpConfEndless) { 
+                showCustomAlert('MATCH OVER', winner.name + " WINS THE MATCH!", "View Lobby", () => { 
+                    mpForceReturnToLobby(); 
+                }, '#ffcc00'); 
+                return; 
+            } 
+            mpStartGame(); 
+        }, 2000); 
+    } 
+}
+
+function mpGameLoop() { 
+    if (document.getElementById('mpGameContainer').style.display === 'none') { 
+        requestAnimationFrame(mpGameLoop); 
+        return; 
+    } 
+    
+    let now = Date.now(); 
+    if (!mpIsPaused && now - lastSyncTime > 30) { 
+        lastSyncTime = now; 
+        let myTank = mpPlayers.find(t => t.isLocal); 
+        if (myTank && !myTank.dead) { 
+            let stateData = { type: 'sync_state', peerId: myPeer.id, x: myTank.x, y: myTank.y, angle: myTank.angle }; 
+            if (isHost) conns.forEach(c => c.send(stateData)); 
+            else if (conns.length > 0) conns[0].send(stateData); 
+        } 
+    } 
+    
+    mpCtx.clearRect(0, 0, mpCanvas.width, mpCanvas.height); 
+    
+    if (mpShake > 0 && !mpIsPaused) { 
+        mpCtx.translate(Math.random() * 12 - 6, Math.random() * 12 - 6); 
+        mpShake--; 
+    } 
+    
+    mpCtx.fillStyle = "#eaeaea"; 
+    mpCtx.fillRect(0, 0, logicalW, logicalH); 
+    
+    mpCtx.fillStyle = "#333"; 
+    mpWalls.forEach(w => mpCtx.fillRect(w.x, w.y, w.w, w.h)); 
+    
+    if(!mpIsPaused) { 
+        mpParticles.forEach(p => p.update()); 
+        mpParticles = mpParticles.filter(p => p.life > 0); 
+    } 
+    mpParticles.forEach(p => p.draw()); 
+    
+    mpPlayers.forEach(tank => { 
+        if(!mpIsPaused) tank.update(); 
+        tank.draw(); 
+        
+        if(!mpIsPaused) { 
+            tank.bullets = tank.bullets.filter(b => b.alive); 
+            tank.bullets.forEach(b => { 
+                b.update(); 
+                b.draw(); 
+                
+                mpPlayers.forEach(target => { 
+                    if (!target.dead && mpIsPlaying) { 
+                        if (Math.hypot(b.x - target.x, b.y - target.y) < target.radius + 4) { 
+                            if (target.isLocal) { 
+                                target.dead = true; 
+                                mpShake = 15; 
+                                
+                                for(let i=0; i<30; i++) { 
+                                    mpParticles.push(new MPParticle(target.x, target.y, target.color)); 
+                                    mpParticles.push(new MPParticle(target.x, target.y, '#ffaa00')); 
+                                } 
+                                
+                                let deathData = { type: 'sync_death', peerId: myPeer.id }; 
+                                if (isHost) { 
+                                    conns.forEach(c => c.send(deathData)); 
+                                    mpCheckRoundEnd(); 
+                                } else if (conns.length > 0) {
+                                    conns[0].send(deathData); 
+                                }
+                            } 
+                        } 
+                    } 
+                }); 
+            }); 
+        } else { 
+            tank.bullets.forEach(b => b.draw()); 
+        } 
+    }); 
+    
+    mpCtx.setTransform(1, 0, 0, 1, 0, 0); 
+    requestAnimationFrame(mpGameLoop); 
+}
+requestAnimationFrame(mpGameLoop);
+
+// --- KEYBOARD BINDING RENDERER (MP) ---
+document.querySelectorAll('.keybind-mp').forEach(input => { 
+    input.addEventListener('click', function() { 
+        if (mpActiveBindInput) { 
+            mpActiveBindInput.value = mpActiveBindInput.dataset.oldValue; 
+            mpActiveBindInput.style.borderColor = '#555'; 
+            mpActiveBindInput.style.backgroundColor = '#111'; 
+            window.removeEventListener('keydown', window.currentMPKeyHandler); 
+        } 
+        
+        mpActiveBindInput = this; 
+        this.dataset.oldValue = this.value; 
+        this.value = 'Press...'; 
+        this.style.borderColor = '#0088ff'; 
+        this.style.backgroundColor = '#002244'; 
+        document.getElementById('mpBindInstruction').innerText = `Assigning key for ${this.parentElement.innerText.split(':')[0]}...`; 
+        
+        const keyHandler = (e) => { 
+            e.preventDefault(); 
+            mpFinalizeBind(e.code); 
+        }; 
+        window.currentMPKeyHandler = keyHandler; 
+        window.addEventListener('keydown', keyHandler); 
+    }); 
+});
+
+function mpFinalizeBind(code) { 
+    if (!mpActiveBindInput) return; 
+    mpActiveBindInput.value = code; 
+    mpActiveBindInput.style.borderColor = '#555'; 
+    mpActiveBindInput.style.backgroundColor = '#111'; 
+    window.removeEventListener('keydown', window.currentMPKeyHandler); 
+    mpActiveBindInput = null; 
+    document.getElementById('mpBindInstruction').innerText = 'Click an input box above to start binding...'; 
+    mpGenerateKeyboardMap(); 
+}
+
+function mpGenerateKeyboardMap() { 
+    const renderArea = document.getElementById('mpKeyboardRenderArea'); 
+    renderArea.innerHTML = ''; 
+    let keyColors = {}; 
+    
+    let pColor = colorPalette[myColorIndex]; 
+    if(adminEditingTargetId) { 
+        let p = playersList.find(x => x.id === adminEditingTargetId); 
+        if(p) pColor = colorPalette[p.colorIndex]; 
+    } 
+    
+    let hexColor = pColor ? pColor.hex : '#fff'; 
+    ['u', 'd', 'l', 'r', 's'].forEach(dir => { 
+        let el = document.getElementById(`mpP1${dir}`); 
+        if(el) keyColors[el.value] = hexColor; 
+    }); 
+    
+    const mainLayout = [ 
+        [{code: 'Backquote', label: '\\'}, {code: 'Digit1', label: '1'}, {code: 'Digit2', label: '2'}, {code: 'Digit3', label: '3'}, {code: 'Digit4', label: '4'}, {code: 'Digit5', label: '5'}, {code: 'Digit6', label: '6'}, {code: 'Digit7', label: '7'}, {code: 'Digit8', label: '8'}, {code: 'Digit9', label: '9'}, {code: 'Digit0', label: '0'}, {code: 'Minus', label: '\''}, {code: 'Equal', label: 'ì'}, {code: 'Backspace', label: 'Back', cls: 'k-backspace'}], 
+        [{code: 'Tab', label: 'Tab', cls: 'k-tab'}, {code: 'KeyQ', label: 'Q'}, {code: 'KeyW', label: 'W'}, {code: 'KeyE', label: 'E'}, {code: 'KeyR', label: 'R'}, {code: 'KeyT', label: 'T'}, {code: 'KeyY', label: 'Y'}, {code: 'KeyU', label: 'U'}, {code: 'KeyI', label: 'I'}, {code: 'KeyO', label: 'O'}, {code: 'KeyP', label: 'P'}, {code: 'BracketLeft', label: 'è'}, {code: 'BracketRight', label: '+'}, {code: 'Enter', label: 'Invio', cls: 'k-enter-top'}], 
+        [{code: 'CapsLock', label: 'Bloc\nMaiusc', cls: 'k-caps'}, {code: 'KeyA', label: 'A'}, {code: 'KeyS', label: 'S'}, {code: 'KeyD', label: 'D'}, {code: 'KeyF', label: 'F'}, {code: 'KeyG', label: 'G'}, {code: 'KeyH', label: 'H'}, {code: 'KeyJ', label: 'J'}, {code: 'KeyK', label: 'K'}, {code: 'KeyL', label: 'L'}, {code: 'Semicolon', label: 'ò'}, {code: 'Quote', label: 'à'}, {code: 'Backslash', label: 'ù'}, {code: 'Enter', label: '', cls: 'k-enter-bot'}], 
+        [{code: 'ShiftLeft', label: 'Maiusc', cls: 'k-shift-l'}, {code: 'IntlBackslash', label: '<'}, {code: 'KeyZ', label: 'Z'}, {code: 'KeyX', label: 'X'}, {code: 'KeyC', label: 'C'}, {code: 'KeyV', label: 'V'}, {code: 'KeyB', label: 'B'}, {code: 'KeyN', label: 'N'}, {code: 'KeyM', label: 'M'}, {code: 'Comma', label: ','}, {code: 'Period', label: '.'}, {code: 'Slash', label: '-'}, {code: 'ShiftRight', label: 'Maiusc', cls: 'k-shift-r'}], 
+        [{code: 'ControlLeft', label: 'Ctrl', cls: 'k-ctrl'}, {code: 'MetaLeft', label: 'Win', cls: 'k-mod'}, {code: 'AltLeft', label: 'Alt', cls: 'k-mod'}, {code: 'Space', label: 'Spazio', cls: 'k-space'}, {code: 'AltRight', label: 'Alt Gr', cls: 'k-mod'}, {code: 'MetaRight', label: 'Win', cls: 'k-mod'}, {code: 'ContextMenu', label: 'Menu', cls: 'k-mod'}, {code: 'ControlRight', label: 'Ctrl', cls: 'k-ctrl'}] 
+    ]; 
+    const navLayout = [ 
+        [{code: 'Insert', label: 'Ins'}, {code: 'Home', label: 'Home'}, {code: 'PageUp', label: 'Pg↑'}], 
+        [{code: 'Delete', label: 'Canc'}, {code: 'End', label: 'End'}, {code: 'PageDown', label: 'Pg↓'}], 
+        [{code: 'Empty', label: ''}, {code: 'Empty', label: ''}, {code: 'Empty', label: ''}], 
+        [{code: 'Empty', label: ''}, {code: 'ArrowUp', label: '↑'}, {code: 'Empty', label: ''}], 
+        [{code: 'ArrowLeft', label: '←'}, {code: 'ArrowDown', label: '↓'}, {code: 'ArrowRight', label: '→'}] 
+    ]; 
+    const numpadFlatLayout = [ 
+        {code: 'NumLock', label: 'Num'}, {code: 'NumpadDivide', label: '/'}, {code: 'NumpadMultiply', label: '*'}, {code: 'NumpadSubtract', label: '-'}, 
+        {code: 'Numpad7', label: '7'}, {code: 'Numpad8', label: '8'}, {code: 'Numpad9', label: '9'}, {code: 'NumpadAdd', label: '+', cls: 'k-num-plus'}, 
+        {code: 'Numpad4', label: '4'}, {code: 'Numpad5', label: '5'}, {code: 'Numpad6', label: '6'}, 
+        {code: 'Numpad1', label: '1'}, {code: 'Numpad2', label: '2'}, {code: 'Numpad3', label: '3'}, {code: 'NumpadEnter', label: 'Invio', cls: 'k-num-enter'}, 
+        {code: 'Numpad0', label: '0', cls: 'k-num-zero'}, {code: 'NumpadDecimal', label: '.'} 
+    ]; 
+    
+    function createSection(layoutArray, isGrid = false, extraClass = '') { 
+        let sectionDiv = document.createElement('div'); 
+        sectionDiv.className = 'keyboard-section ' + extraClass; 
+        let arr = isGrid ? layoutArray : layoutArray.flat(); 
+        
+        if (isGrid) { 
+            arr.forEach(keyObj => renderKey(keyObj, sectionDiv)); 
+        } else { 
+            layoutArray.forEach(row => { 
+                let rowDiv = document.createElement('div'); 
+                rowDiv.className = 'keyboard-row'; 
+                row.forEach(keyObj => renderKey(keyObj, rowDiv)); 
+                sectionDiv.appendChild(rowDiv); 
+            }); 
+        } 
+        return sectionDiv; 
+    } 
+    
+    function renderKey(keyObj, parentElement) { 
+        let keyDiv = document.createElement('div'); 
+        keyDiv.className = 'key-box'; 
+        
+        if (keyObj.cls) keyObj.cls.split(' ').forEach(c => keyDiv.classList.add(c)); 
+        
+        if (keyObj.code === 'Empty') { 
+            keyDiv.classList.add('key-empty'); 
+        } else { 
+            keyDiv.innerText = keyObj.label; 
+            keyDiv.dataset.code = keyObj.code; 
+            keyDiv.onmouseenter = () => document.querySelectorAll(`.key-box[data-code="${keyObj.code}"]`).forEach(el => el.classList.add('key-hover')); 
+            keyDiv.onmouseleave = () => document.querySelectorAll(`.key-box[data-code="${keyObj.code}"]`).forEach(el => el.classList.remove('key-hover')); 
+            
+            keyDiv.onclick = () => { if (mpActiveBindInput) mpFinalizeBind(keyObj.code); }; 
+            
+            if (keyColors[keyObj.code]) { 
+                keyDiv.classList.add('bound-key'); 
+                keyDiv.style.backgroundColor = keyColors[keyObj.code]; 
+                keyDiv.style.borderColor = 'white'; 
+                if (keyObj.cls && keyObj.cls.includes('k-enter-top')) keyDiv.style.borderBottomColor = 'transparent'; 
+                if (keyObj.cls && keyObj.cls.includes('k-enter-bot')) keyDiv.style.borderTopColor = 'transparent'; 
+                
+                const isBright = ['#ffffff', '#ffcc00', '#00ffff'].includes(keyColors[keyObj.code]); 
+                keyDiv.style.color = isBright ? 'black' : 'white'; 
+                keyDiv.style.textShadow = isBright ? 'none' : '1px 1px 2px black'; 
+            } 
+        } 
+        parentElement.appendChild(keyDiv); 
+    } 
+    
+    renderArea.appendChild(createSection(mainLayout, false, '')); 
+    renderArea.appendChild(createSection(navLayout, false, '')); 
+    renderArea.appendChild(createSection(numpadFlatLayout, true, 'numpad-grid')); 
+}
+</script>
+</body>
+</html>
